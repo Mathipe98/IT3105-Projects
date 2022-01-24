@@ -1,6 +1,11 @@
-from typing import Any, Dict, Union
+from typing import Any, Dict, Union, List
 import numpy as np
+from itertools import product
+from pprint import pprint
+
 from tile_coding import create_tilings, get_tile_coding
+
+np.random.seed(123)
 
 
 class Simworld:
@@ -11,7 +16,7 @@ class Simworld:
                  n_steps: int,
                  funcapp: bool,
                  network_dim: Union[tuple, None],
-                 act_crit_params: list[float],
+                 act_crit_params: List[float],
                  # act_lr: float,
                  # act_decay: float,
                  # act_disc: float,
@@ -41,6 +46,8 @@ class Simworld:
         self.epsilon = epsilon
         self.display = display
         self.frame_delay = frame_delay
+        self.states = None
+        self.tilings = None
         self.__dict__.update(kwargs)
 
         """
@@ -60,32 +67,96 @@ class Simworld:
         Maybe coarse coding for all games is possible, look into this.
         """
 
-    def generate_states(self, game: int) -> np.ndarray:
-        if game == 0:
-            # Game is pole-balancing, we need a general way to represent the state
-            # State parameters: cart position, cart speed, pole angle, pole angular velocity (x, x', theta, theta')
-            # Thoughts: binning; for each variable, put the values into discrete bins (buckets) of values
-            # Include tau (timestep) in the state, but only 2 bins; 1 bin is when tau < 300 (which is the goal), and the other is tau >= 300. Then we can check whether tau is in the second bin when checking if winning state
-            # First create ranges for all variables such that we can check states easily in bins
-            x_range = [-2.4, 2.4] # Note: when the state for this is 0 or the length of the bin, then we lose. Same goes for angle
-            x_v_range = [-1, 1]
-            ang_range = [-0.21, 0.21]
-            ang_v_range = [-0.1, 0.1]
-            t_range = [0, 300]
-            ranges = [x_range, x_v_range, ang_range, ang_v_range, t_range]
-            # Setup bin (bucket) parameters
-            n_tilings = 3
-            x_bins = 4
-            x_v_bins = 4
-            ang_bins = 8
-            ang_v_bins = 8
-            t_bins = 2
-            # Create a nested list that uses the same bins for every tiling
-            bins = [x_bins, x_v_bins, ang_bins, ang_v_bins, t_bins]
-            bins = [bins[:] for _ in range(n_tilings)]
-            
-            pass
+    def generate_states(self) -> np.ndarray:
+        if self.game == 0:
+            n_tilings = 2
+            feat_bins = [4, 4, 8, 8, 2]
+            self.tilings = generate_cart_encoding(n_tilings, feat_bins)
+            self.states = generate_state_permutations(n_tilings, feat_bins)
         else:
             pass
-    
- 
+
+    def get_states(self) -> np.ndarray:
+        return self.states
+
+
+def generate_state_permutations(n_tilings: int, feat_bins: List) -> np.ndarray:
+    """This function generates all the possible states for a given problem.
+    The states are solely based on the number of tiles, and the number of feature
+    bins for each feature. The function creates all permutations for the potential
+    binnings for each tile for each variable.
+    The total number of states will be equal to:
+    n_states = pow(prod(all bin values), n_tilings)
+
+    Note: becomes slow for extremely large values. Less tilings decreases the runtime
+    exponentially, so if the system becomes slow, this is the variable to reduce.
+
+    Args:
+        feat_bins (List): List containing the number of bins for each variable
+
+    Returns:
+        np.ndarray: Array of every possible state in the cart pole world
+    """
+    # Create a result array that will contain all the possible states
+    all_possible_states = []
+    # Create a list of ranges for creating cross products of every value
+    range_inputs = []
+    for bin in feat_bins:
+        range_inputs.append(range(0, bin))
+    # Now permute all possible values to create all possible states
+    permutations = []
+    for _ in range(n_tilings):
+        permutations.append(list(product(*range_inputs)))
+    cross_product = product(*permutations)
+    for v in cross_product:
+        all_possible_states.append([list(perm) for perm in v])
+    return np.array(all_possible_states, dtype='object')
+
+
+def generate_cart_encoding(n_tilings: int, feat_bins: List) -> np.ndarray:
+    """This function generates the tile-encoding for the cart problem.
+
+    Args:
+        n_tilings (int): Number of tiles for the encoding
+        feat_bins (List): List containing the number of bins (buckets) for
+                            each respective variable
+
+    Returns:
+        np.ndarray: Array that is used for indexing and encoding the features
+                    in the problem (i.e. positions and velocities)
+    """
+    x_range = [-2.4, 2.4]
+    x_v_range = [-1, 1]
+    ang_range = [-0.21, 0.21]
+    ang_v_range = [-0.1, 0.1]
+    t_range = [0, 300]
+    ranges = [x_range, x_v_range, ang_range, ang_v_range, t_range]
+    # Create a nested list that uses the same bins for every tiling
+    bins = [bin for bin in feat_bins]
+    bins = [bins[:] for _ in range(n_tilings)]
+    offset = 0
+    offset_list = []
+    for _ in range(n_tilings):
+        current = []
+        for i in range(len(ranges) - 1):
+            a = ranges[i][0]
+            b = ranges[i][1]
+            ab_sum = abs(a) + abs(b)
+            # Let the offset for a particular feature be 20% of the feature itself
+            # Then double that every iteration with offset variable
+            feat_offset = round(ab_sum * 0.2 * offset, 4)
+            current.append(feat_offset)
+        # Append 150 last because timestep offset is constant
+        current.append(150)
+        offset_list.append(current)
+        offset += 1
+    tilings = create_tilings(ranges, n_tilings, bins, offset_list)
+    return tilings
+
+
+if __name__ == '__main__':
+    test_object = Simworld(0, 1, 1, False, None, [0.1], 0, 0, 0)
+
+    test_object.generate_states()
+    print(len(test_object.get_states()))
+    print(test_object.get_states().shape)
