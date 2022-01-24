@@ -1,5 +1,6 @@
-from typing import Any, Dict, Union, List
+from typing import Any, Dict, Union, List, Tuple
 import numpy as np
+import random
 from itertools import product
 from pprint import pprint
 
@@ -9,13 +10,13 @@ from tile_coding import create_tilings, get_tile_coding
 class CartPoleGame:
 
     def __init__(self,
-                 g: float=-9.81,
-                 m_c: float=1,
-                 m_p: float=1,
-                 l: float=0.5,
-                 tau: float=0.02,
-                 n_tilings: int=2,
-                 feat_bins: List=None) -> None:
+                 g: float = 9.81,
+                 m_c: float = 1,
+                 m_p: float = 1,
+                 l: float = 0.5,
+                 tau: float = 0.02,
+                 n_tilings: int = 2,
+                 feat_bins: List = None) -> None:
         if feat_bins is None:
             feat_bins = [4, 4, 8, 8, 2]
         self.g = g
@@ -34,6 +35,7 @@ class CartPoleGame:
         self.theta = np.zeros(steps)
         self.dtheta = np.zeros(steps)
         self.d2theta = np.zeros(steps)
+        self.theta[0] = random.uniform(-0.21, 0.21)
 
     def generate_encoding(self) -> np.ndarray:
         """This method generates the tile-encoding for the cart problem.
@@ -72,11 +74,9 @@ class CartPoleGame:
 
     def get_next_state_parameters(self, current_parameters: List, action: float) -> List:
         elapsed_time = current_parameters[-1]
-        print(f"Elapsed time: {elapsed_time}")
-        t = int(elapsed_time / self.tau) + 1
-        print(f"t value: {t}")
+        t = round(elapsed_time / self.tau) + 1
         self.theta[t] = self.theta[t-1] + self.tau * self.dtheta[t-1]
-        self.dtheta[t] = self.theta[t-1] + self.tau * self.d2theta[t-1]
+        self.dtheta[t] = self.dtheta[t-1] + self.tau * self.d2theta[t-1]
         self.d2theta[t] = self.compute_d2theta(action, t)
         self.x[t] = self.x[t-1] + self.tau * self.dx[t-1]
         self.dx[t] = self.dx[t-1] + self.tau * self.d2x[t-1]
@@ -86,30 +86,36 @@ class CartPoleGame:
             self.dx[t],
             self.theta[t],
             self.dtheta[t],
-            elapsed_time + self.tau
+            round(elapsed_time + self.tau, 6)
         ]
         return next_state_parameters
 
     def compute_d2x(self, F: float, t: int) -> float:
-        var_1 = self.m_p * self.l * (self.dtheta[t]**2 * np.sin(self.theta[t]) - self.d2theta[t] * np.cos(self.theta[t]))
+        var_1 = self.m_p * self.l * \
+            (self.dtheta[t]**2 * np.sin(self.theta[t]) -
+             self.d2theta[t] * np.cos(self.theta[t]))
         var_2 = self.m_c + self.m_p
         result = (F + var_1) / var_2
         return result
-    
+
     def compute_d2theta(self, F: float, t: int) -> float:
         denom_part = (self.m_p * self.theta[t] ** 2) / (self.m_c + self.m_p)
         denominator = self.l * (4/3 - denom_part)
-        numer_part = (-F - self.m_p * self.l * self.dtheta[t]**2 * np.sin(self.theta[t])) / (self.m_c + self.m_p)
-        numerator = (self.g * np.sin(self.theta[t]) + np.cos(self.theta[t]) * numer_part)
+        numer_part = (-F - self.m_p * self.l *
+                      self.dtheta[t]**2 * np.sin(self.theta[t])) / (self.m_c + self.m_p)
+        numerator = (
+            self.g * np.sin(self.theta[t]) + np.cos(self.theta[t]) * numer_part)
         result = numerator / denominator
         return result
 
-if __name__ == "__main__":
-    test_parameters = [0.1, 0.01, 0.1, 0.01, 0]
-    test_obj = CartPoleGame()
-    next_params = test_obj.get_next_state_parameters(test_parameters, 10)
-    print(f"Current params: {test_parameters}")
-    print(f"Next params: {next_params}")
-    for i in range(10):
-        next_params = test_obj.get_next_state_parameters(next_params, 10)
-        print(f"Loop params: {next_params}")
+    def is_losing_state(self, state: np.ndarray) -> bool:
+        x_pos = state[0][0]
+        theta_pos = state[0][2]
+        x_limit = self.feat_bins[0] - 1
+        theta_limit = self.feat_bins[2] - 1
+        print(f"Limits: {(x_limit, theta_limit)}")
+        return x_pos == 0 or x_pos == x_limit or \
+            theta_pos == 0 or theta_pos == theta_limit
+
+    def is_winning_state(self, state: np.ndarray) -> bool:
+        return np.all((state[:, [-1]] == 1))

@@ -15,8 +15,11 @@ def create_single_tiling(
     Returns:
         np.ndarray: Array that contains the tiles for the feature, where the tile is evenly divided into bins
     """
-
-    return np.linspace(feat_range[0], feat_range[1], bins+1)[1:-1] + offset
+    # a = np.linspace(feat_range[0], feat_range[1], bins - 1)
+    # b = a[1:-1]
+    # c = b + offset
+    # print(a, b, c)
+    return np.linspace(feat_range[0], feat_range[1], bins-1) + offset
 
 
 def create_tilings(feature_ranges: list, number_tilings: int, bins: list, offsets: list) -> np.ndarray:
@@ -121,10 +124,10 @@ def test_pole_tilings() -> None:
     print(test_result)
 
 def test_other_thing() -> None:
-    feature_ranges = [[-1, 1], [2, 5], [0, 10], [-2.4, 2.4], [-1, 1]]
+    feature_ranges = [[-2.4, 2.4], [-1, 1], [-0.21, 0.21], [-0.1, 0.1], [0, 300]]
     number_tilings = 2
-    bins = [[4, 4, 8, 8, 8], [5, 5, 9, 9, 9]]
-    offsets = [[0, 0, 0, 0, 0], [1, 1, 1, 1, 1]]
+    bins = [[4, 4, 8, 8, 2], [5, 5, 9, 9, 2]]
+    offsets = [[0, 0, 0, 0, 300], [1, 1, 1, 1, 300]]
 
     tilings = create_tilings(feature_ranges, number_tilings, bins, offsets)
     print(tilings)
@@ -134,18 +137,5 @@ def test_other_thing() -> None:
     print(coding)
 
 if __name__ == '__main__':
-    """
-    feature_ranges = [[-1, 1], [2, 5]]  # 2 features
-    number_tilings = 1
-    bins = [[10, 10, 10], [10, 10], [10, 10]]  # each tiling has a 10*10 grid
-    offsets = [[0, 0, 0], [0.2, 1], [0.4, 1.5]]
-
-    tilings = create_tilings(feature_ranges, number_tilings, bins, offsets)
-
-    feature = [0.1, 2.5, 0.3]
-
-    coding = get_tile_coding(feature, tilings)
-    print(coding)
-    """
-    test_pole_tilings()
+    # test_pole_tilings()
     test_other_thing()

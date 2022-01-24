@@ -1,5 +1,6 @@
-from typing import Any, Dict, Union, List
+from typing import Any, Dict, Union, List, Tuple
 import numpy as np
+import random
 from itertools import product
 from pprint import pprint
 
@@ -11,34 +12,13 @@ np.random.seed(123)
 
 class Simworld:
 
-    def __init__(self,
-                 game: int,
-                 n_episodes: int,
-                 n_steps: int,
-                 funcapp: bool,
-                 network_dim: Union[tuple, None],
+    def __init__(self, game_number: int, n_episodes: int, n_steps: int,
+                 funcapp: bool, network_dim: Union[tuple, None],
                  act_crit_params: List[float],
-                 # act_lr: float,
-                 # act_decay: float,
-                 # act_disc: float,
-                 # crit_lr: float,
-                 # crit_decay: float,
-                 # crit_disc: float,
-                 epsilon: float,
-                 display: Any,  # <- wtf does this do?
-                 frame_delay: float,
-                 **kwargs: Any) -> None:
-        assert 0 <= game <= 2, "Game number must be between 0-2"
-        assert n_episodes >= 1, "Number of episodes must be >= 1"
-        assert n_steps > 0, "Number of steps must be > 0"
-        if network_dim is not None:
-            for dim in network_dim:
-                assert dim > 0, "Network dimensions cannot be negative"
-        for param in act_crit_params:
-            assert 0.0 <= param <= 1, "Learning rate, decay, and discount parameters must be between 0-1"
-        assert 0.0 <= epsilon <= 1, "Epsilon must be in the range 0-1"
-        assert frame_delay >= 0.0, "Frame delay must be a positive value"
-        self.game = game
+                 # act_lr: float, act_decay: float, act_disc: float,
+                 # crit_lr: float, crit_decay: float, crit_disc: float,
+                 epsilon: float, display: Any, frame_delay: float) -> None:
+        self.game_number = game_number
         self.n_episodes = n_episodes
         self.n_steps = n_steps
         self.funcapp = funcapp
@@ -47,50 +27,39 @@ class Simworld:
         self.epsilon = epsilon
         self.display = display
         self.frame_delay = frame_delay
-        self.states = None
         self.tilings = None
-        self.__dict__.update(kwargs)
+        self.game = None
+        self.states = None
+        self.initialize()
 
-        """
-        Thoughts:
-            - Create methods for generating (somehow) the general state of the game, some way to represent it
-            - Create methods for getting a successor (child) state given a certain action
-                * This because the actor will map states to actions, and therefore needs to consult the
-                    simworld in order to know what state an action can lead to
-            - Create method for receiving an immediate reinforcement (reward) of a state
-                * This implies that a mapping must be constructed such that all states have some reinforcement
-                * Was going to write something else here, but forgot it
-            - Create method for generating the proper start and goal states
-            - Create method for checking if a certain state is a goal state
-        
-        In general, try to come up with a way of representing the different games in similar fashions, such
-        that all representations can use the same functionality.
-        Maybe coarse coding for all games is possible, look into this.
-        """
+    def initialize(self) -> None:
+        if self.game_number == 0:
+            self.game = CartPoleGame()
+            self.tilings = self.game.generate_encoding()
+            # self.states = generate_state_permutations(
+            # game.n_tilings, game.feat_bins)
+    
+    def new_episode(self) -> None:
+        if self.game_number == 0:
+            self.game = CartPoleGame()
 
-    def generate_states(self) -> np.ndarray:
-        if self.game == 0:
-            game = CartPoleGame()
-            self.tilings = game.generate_encoding()
-            self.states = generate_state_permutations(game.n_tilings, game.feat_bins)
-        else:
-            pass
+    def get_next_state(self, features: List, action: float) -> Tuple[List, np.ndarray]:
+        next_feature_values = self.game.get_next_state_parameters(
+            features, action)
+        next_state = get_tile_coding(next_feature_values, self.tilings)
+        return next_feature_values, next_state
 
-    def get_states(self) -> np.ndarray:
-        return self.states
+    def is_winning_state(self, state: np.ndarray) -> bool:
+        return self.game.is_winning_state(state)
+
+    def is_losing_state(self, state: np.ndarray) -> bool:
+        return self.game.is_losing_state(state)
 
 
 def generate_state_permutations(n_tilings: int, feat_bins: List) -> np.ndarray:
     """This function generates all the possible states for a given problem.
     The states are solely based on the number of tiles, and the number of feature
-    bins for each feature. The function creates all permutations for the potential
-    binnings for each tile for each variable.
-    The total number of states will be equal to:
-    n_states = pow(prod(all bin values), n_tilings)
-
-    Note: becomes slow for extremely large values. Less tilings decreases the runtime
-    exponentially, so if the system becomes slow, this is the variable to reduce.
-
+    bins for each feature.
     Args:
         feat_bins (List): List containing the number of bins for each variable
 
@@ -113,9 +82,24 @@ def generate_state_permutations(n_tilings: int, feat_bins: List) -> np.ndarray:
     return np.array(all_possible_states, dtype='object')
 
 
+def test_random_survival() -> None:
+    test_features = [-2.3, -0.1, -0.20, -0.1, 0]
+    world = Simworld(0, 1, 1, False, None, [0.1], 0, 0, 0)
+    actions = [-10, 10]
+    features = test_features
+    state = None
+    losing = False
+    while not losing:
+        action = random.choice(actions)
+
+        features, state = world.get_next_state(features, action)
+        losing = world.is_losing_state(state)
+        print(f"Features: {features}")
+        print(f"State: {state}")
+        print(f"Is winning: {world.is_winning_state(state)}")
+        print(f"Is losing: {losing}\n")
+
 if __name__ == '__main__':
     test_object = Simworld(0, 1, 1, False, None, [0.1], 0, 0, 0)
-
-    test_object.generate_states()
-    print(len(test_object.get_states()))
-    print(test_object.get_states().shape)
+    print(test_object.tilings)
+    test_random_survival()
