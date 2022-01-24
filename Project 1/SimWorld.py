@@ -4,6 +4,7 @@ from itertools import product
 from pprint import pprint
 
 from tile_coding import create_tilings, get_tile_coding
+from cart_pole import CartPoleGame
 
 np.random.seed(123)
 
@@ -69,10 +70,9 @@ class Simworld:
 
     def generate_states(self) -> np.ndarray:
         if self.game == 0:
-            n_tilings = 2
-            feat_bins = [4, 4, 8, 8, 2]
-            self.tilings = generate_cart_encoding(n_tilings, feat_bins)
-            self.states = generate_state_permutations(n_tilings, feat_bins)
+            game = CartPoleGame()
+            self.tilings = game.generate_encoding()
+            self.states = generate_state_permutations(game.n_tilings, game.feat_bins)
         else:
             pass
 
@@ -111,47 +111,6 @@ def generate_state_permutations(n_tilings: int, feat_bins: List) -> np.ndarray:
     for v in cross_product:
         all_possible_states.append([list(perm) for perm in v])
     return np.array(all_possible_states, dtype='object')
-
-
-def generate_cart_encoding(n_tilings: int, feat_bins: List) -> np.ndarray:
-    """This function generates the tile-encoding for the cart problem.
-
-    Args:
-        n_tilings (int): Number of tiles for the encoding
-        feat_bins (List): List containing the number of bins (buckets) for
-                            each respective variable
-
-    Returns:
-        np.ndarray: Array that is used for indexing and encoding the features
-                    in the problem (i.e. positions and velocities)
-    """
-    x_range = [-2.4, 2.4]
-    x_v_range = [-1, 1]
-    ang_range = [-0.21, 0.21]
-    ang_v_range = [-0.1, 0.1]
-    t_range = [0, 300]
-    ranges = [x_range, x_v_range, ang_range, ang_v_range, t_range]
-    # Create a nested list that uses the same bins for every tiling
-    bins = [bin for bin in feat_bins]
-    bins = [bins[:] for _ in range(n_tilings)]
-    offset = 0
-    offset_list = []
-    for _ in range(n_tilings):
-        current = []
-        for i in range(len(ranges) - 1):
-            a = ranges[i][0]
-            b = ranges[i][1]
-            ab_sum = abs(a) + abs(b)
-            # Let the offset for a particular feature be 20% of the feature itself
-            # Then double that every iteration with offset variable
-            feat_offset = round(ab_sum * 0.2 * offset, 4)
-            current.append(feat_offset)
-        # Append 150 last because timestep offset is constant
-        current.append(150)
-        offset_list.append(current)
-        offset += 1
-    tilings = create_tilings(ranges, n_tilings, bins, offset_list)
-    return tilings
 
 
 if __name__ == '__main__':
