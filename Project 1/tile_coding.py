@@ -90,6 +90,7 @@ def get_tile_coding(feature_values: list, tilings: list) -> np.ndarray:
             feat_coding.append(coding_i)
         feat_codings.append(feat_coding)
     return np.array(feat_codings)
+    
 
 def test_pole_tilings() -> None:
     # Features in following order: cart position, cart velocity, angle position, angle velocity, timestep
@@ -114,12 +115,12 @@ def test_pole_tilings() -> None:
     # Offset = 150 => timestep <= 299 => we're not winning, timestep >= 300 => we are winning
     # This because if tau <= 299, the tile encoding will result in 0 with this offset
     # (Reason for 150: linspace takes range/2 = 150, so offset 150 => bin-value becomes 300)
-    timestep_offset = 150
+    timestep_offset = 300
     feat_bins = [[cart_pos_bins, cart_speed_bins, angle_pos_bins, angle_vel_bins, timestep_bins]]
     feat_offsets = [[cart_pos_offset, cart_speed_offset, angle_pos_offset, angle_vel_offset, timestep_offset]]
     test_tilings = create_tilings(feature_ranges, n_tilings, feat_bins, feat_offsets)
     print(test_tilings)    
-    test_encoding = [1.2, -100, -0.3, 2, 299]
+    test_encoding = [1.2, -100, -0.3, 2, 300]
     test_result = get_tile_coding(test_encoding, test_tilings)
     print(test_result)
 
@@ -137,5 +138,5 @@ def test_other_thing() -> None:
     print(coding)
 
 if __name__ == '__main__':
-    # test_pole_tilings()
-    test_other_thing()
+    test_pole_tilings()
+    # test_other_thing()
