@@ -6,20 +6,21 @@ from pprint import pprint
 
 from tile_coding import create_tilings, get_tile_coding
 
-np.random.seed(123)
+# np.random.seed(123)
 
 
 class SimWorld:
 
-    def __init__(self, game_number: int, n_episodes: int, n_steps: int,
-                 funcapp: bool, network_dim: Union[tuple, None],
+    def __init__(self, game_number: int, n_episodes: int, maximum_steps: int,
+                 td_n_steps: int, funcapp: bool, network_dim: Union[tuple, None],
                  act_crit_params: List[float],
                  # act_lr: float, act_decay: float, act_disc: float,
                  # crit_lr: float, crit_decay: float, crit_disc: float,
                  epsilon: float, display: Any, frame_delay: float) -> None:
         self.game_number = game_number
         self.n_episodes = n_episodes
-        self.n_steps = n_steps
+        self.maximum_steps = maximum_steps
+        self.td_n_steps = td_n_steps
         self.funcapp = funcapp
         self.network_dim = network_dim
         self.act_crit_params = act_crit_params

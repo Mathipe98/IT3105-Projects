@@ -1,14 +1,12 @@
 import numpy as np
-from cart_pole import CartPoleGame
 
 
 class Actor:
 
-    def __init__(self, sim_world: CartPoleGame, epsilon: float) -> None:
-        self.sim_world = sim_world
-        self.epsilon = epsilon
-        self.n_states = len(self.sim_world.n_states)
-        self.n_actions = len(self.sim_world.n_actions)
+    def __init__(self, epsilon: float, alpha: float, gamma: float,
+                n_states: int, n_actions: int) -> None:
+        self.epsilon, self.alpha, self.gamma = epsilon, alpha, gamma
+        self.n_states, self.n_actions = n_states, n_actions
         # Let policy = PI(s), while PI = PI(s,a)
         # policy = 1D array; PI = 2D array
         self.policy = None
@@ -27,23 +25,22 @@ class Actor:
     def calculate_best_action(self, state: int) -> int:
         # With probability epsilon, choose a random action
         if np.random.uniform(0,1) < self.epsilon:
-            return np.random.choice(self.all_actions)
+            return np.random.choice(range(self.n_actions))
         actions = self.PI[state]
         return np.argmax(actions)
     
     def get_best_action(self, state) -> int:
         return self.policy[state]
 
-    def perform_action(self, action: int) -> None:
-        print(f"State before taking an action:\n\t {self.sim_world.current_state}")
-        next_state, reward = self.sim_world.get_next_state(action)
-        print(f"State after taking an action:\n\t {self.sim_world.current_state}")
+    # def perform_action(self, action: int) -> None:
+    #     print(f"State before taking an action:\n\t {self.game.current_state}")
+    #     next_state, reward = self.game.get_next_state(action)
+    #     print(f"State after taking an action:\n\t {self.game.current_state}")
         
 
 
 def test_stuff():
-    world = CartPoleGame()
-    actor = Actor(world, 0.1)
+    actor = Actor()
     actor.initialize()
     action = actor.calculate_best_action(50)
     for i in range(100):
