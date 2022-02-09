@@ -61,7 +61,7 @@ class CartPoleGame():
             encoded_state_string = str(encoded_state)
             self.encoding_to_state[encoded_state_string] = state
 
-    def start_episode(self) -> None:
+    def reset(self) -> None:
         """Method for starting a new episode, which includes resetting
         all states and state parameters in the simworld
         """
@@ -86,7 +86,7 @@ class CartPoleGame():
         # (transition between generating a child state, and setting the state to the child state)
         self.cache = {}
 
-    def generate_child_state(self, action: int) -> Tuple[int, int]:
+    def step(self, action: int) -> Tuple[int, int, bool]:
         """This method calculates and returns the next state given the current state.
         Since this simworld keeps track of its own state parameters, we only need to know
         in order to calculate the next state's parameters, its encoding, and thereby the
@@ -97,7 +97,8 @@ class CartPoleGame():
             action (int): Integer, 0 or 1, which corresponds to applying a force in a direction
                             0 => 10, 1 => -10
         Returns:
-            Tuple[int, int]: Tuple containing 1. the next state, and 2. the reward of the transition
+            Tuple[int, int, bool]: Tuple containing 1. the next state, 2. the reward of the transition,
+                                and 3. whether or not the resulting state is an end state
         """
         action = 10 - 20 * action
         elapsed_time = self.current_state_parameters[-1]
@@ -119,14 +120,20 @@ class CartPoleGame():
         encoded_next_state = get_tile_coding(
             next_state_parameters, self.tilings)
         next_state = self.encoding_to_state[str(encoded_next_state)]
-        reward = self.transition_win if self.is_winning_state(next_state) \
-            else self.transition_lose if self.is_losing_state(next_state) \
-            else self.transition_normal
+        if self.is_winning_state(next_state):
+            done = True
+            reward = self.transition_win
+        elif self.is_losing_state(next_state):
+            done = True
+            reward = self.transition_lose
+        else:
+            done = False
+            reward = self.transition_normal
         self.cache["next_params"] = next_state_parameters
         self.cache["next_state"] = next_state
-        return self.current_state, reward
+        return self.current_state, reward, done
     
-    def set_child_state(self) -> None:
+    def update_state(self) -> None:
         self.current_state = self.cache["next_state"]
         self.current_state_parameters = self.cache["next_params"]
 

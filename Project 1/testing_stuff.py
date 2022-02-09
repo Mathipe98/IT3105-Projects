@@ -5,7 +5,7 @@ from cart_pole import CartPoleGame
 
 def test_random_survival() -> None:
     world = CartPoleGame()
-    world.start_episode()
+    world.reset()
     actions = [0, 1]
     state = world.current_state
     losing = False
@@ -13,7 +13,7 @@ def test_random_survival() -> None:
         action = random.choice(actions)
         print(f"Current action: {10 - 20 * action}")
         print(f"Current state parameters: {world.current_state_parameters}")
-        state, _ = world.generate_child_state(action)
+        state, _ = world.step(action)
         losing = world.is_losing_state(state)
         print(f"Next state parameters: {world.current_state_parameters}")
         print(f"State: {state}")
@@ -22,7 +22,7 @@ def test_random_survival() -> None:
 
 def test_oscillation() -> None:
     world = CartPoleGame()
-    world.start_episode()
+    world.reset()
     # world.theta[0] = 0
     state = world.current_state
     losing = False
@@ -37,7 +37,7 @@ def test_oscillation() -> None:
             counter = 0
         print(f"Current action: {10 - 20 * action}")
         print(f"Current state parameters: {world.current_state_parameters}")
-        state, _ = world.generate_child_state(action)
+        state, _ = world.step(action)
         losing = world.is_losing_state(state)
         print(f"Next state parameters: {world.current_state_parameters}")
         print(f"State: {state}")
