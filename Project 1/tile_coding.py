@@ -67,7 +67,7 @@ def create_tilings(feature_ranges: list, number_tilings: int, bins: list, offset
     return np.array(tilings, dtype='object')
 
 
-def get_tile_coding(feature_values: list, tilings: list) -> np.ndarray:
+def get_state_encoding(feature_values: list, tilings: list) -> np.ndarray:
     """The final function in the tile-coding hierarchy; this function takes in a set of features and its corresponding tiles,
     and outputs the tile-encoding for that particular set of features.
     In context of the RL agent, the tiles are the states, and the state-space consists of all possible configurations of the tiles.
@@ -121,7 +121,7 @@ def test_pole_tilings() -> None:
     test_tilings = create_tilings(feature_ranges, n_tilings, feat_bins, feat_offsets)
     print(test_tilings)    
     test_encoding = [1.2, -100, -0.3, 2, 300]
-    test_result = get_tile_coding(test_encoding, test_tilings)
+    test_result = get_state_encoding(test_encoding, test_tilings)
     print(test_result)
 
 def test_other_thing() -> None:
@@ -134,7 +134,7 @@ def test_other_thing() -> None:
     print(tilings)
     feature = [0.1, 2.5, 0.3, 0.2, 0]
 
-    coding = get_tile_coding(feature, tilings)
+    coding = get_state_encoding(feature, tilings)
     print(coding)
 
 if __name__ == '__main__':

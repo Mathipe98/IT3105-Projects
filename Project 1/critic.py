@@ -29,13 +29,12 @@ class Critic:
         else:
             self.values = np.random.uniform(
                 low=-0.1, high=0.1, size=(self.n_states, self.n_actions))
+            # self.values = np.zeros(shape=(self.n_states, self.n_actions))
             self.eligibility_trace = np.zeros(shape=(self.n_states, self.n_actions))
 
     def calculate_delta(self, r: float, s1: int, s2: int, a1: int = None, a2: int = None) -> float:
         if not self.use_nn:
-            v_s = self.values[s1, a1]
-            v_s_prime = self.values[s2, a2]
-            delta = r + self.gamma * v_s_prime - v_s
+            delta = r + self.gamma * self.values[s2, a2] - self.values[s1, a1]
             return delta
         pass
 
@@ -49,7 +48,7 @@ class Critic:
                         Defaults to None.
         """
         if not self.use_nn:
-            self.values[state,action] = self.values[state,action] + self.alpha * delta
+            self.values[state,action] = self.values[state,action] + self.alpha * delta * self.eligibility_trace[state, action]
         pass
 
     def set_eligibility(self, state: int, action: int=None) -> None:

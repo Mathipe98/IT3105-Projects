@@ -4,7 +4,7 @@ import random
 from itertools import product
 from pprint import pprint
 
-from tile_coding import create_tilings, get_tile_coding
+from tile_coding import create_tilings, get_state_encoding
 
 # np.random.seed(123)
 

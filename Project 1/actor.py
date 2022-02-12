@@ -17,35 +17,8 @@ class Actor:
         self.initialize()
 
     def initialize(self) -> None:
-        self.PI = np.zeros((self.n_states, self.n_actions),dtype=int)
-        self.policy = np.zeros(self.n_states,dtype=int)
+        self.PI = np.zeros((self.n_states, self.n_actions))
         self.eligibility_trace = np.zeros(shape=(self.n_states, self.n_actions))
-        self.update_policy_map()
-    
-    def update_policy_map(self) -> None:
-        """Updating PI(s)
-        """
-        update = lambda state: self.calculate_best_action(state)
-        self.policy = np.array(list(map(update, self.policy)))
-    
-    def calculate_best_action(self, state: int) -> int:
-        """Method for calculating the best action given an arbitrary state.
-        The method finds all possible actions for the state, and chooses the 
-        index that contains the highest value for each action.
-        It's also epsilon-greedy, meaning that at any time it can randomly
-        choose an action rather than choosing the greedily best one.
-
-        Args:
-            state (int): Given state of the world
-
-        Returns:
-            int: The action proposed by the policy
-        """
-        # With probability epsilon, choose a random action
-        if np.random.uniform(0,1) < self.epsilon:
-            return np.random.choice(range(self.n_actions))
-        actions = self.PI[state]
-        return np.argmax(actions)
     
     def update(self, delta: float, state: int, action: int) -> None:
         """Updating PI(s, a)
@@ -55,7 +28,13 @@ class Actor:
             state (int): [description]
             action (int): [description]
         """
-        self.PI[state, action] = self.PI[state, action] + self.alpha * delta
+        # update_val = self.PI[state, action] + self.alpha * delta
+        # old_val = self.PI[state, action]
+        # self.PI[state, action] = update_val
+        # new_val = self.PI[state, action]
+        # print()
+        self.PI[state, action] = self.PI[state, action] + self.alpha * delta# * self.eligibility_trace[state, action]
+        # self.update_policy_map()
     
     def set_eligibility(self, state: int, action: int=None) -> None:
         self.eligibility_trace[state, action] = 1
@@ -67,14 +46,13 @@ class Actor:
         self.eligibility_trace = np.zeros(shape=(self.n_states, self.n_actions))
     
     def get_action(self, state) -> int:
-        return self.policy[state]
+        if np.random.uniform(0,1) < self.epsilon:
+            return np.random.choice(range(self.n_actions))
+        return np.argmax(self.PI[state, :])
 
-    # def perform_action(self, action: int) -> None:
-    #     print(f"State before taking an action:\n\t {self.game.current_state}")
-    #     next_state, reward = self.game.get_next_state(action)
-    #     print(f"State after taking an action:\n\t {self.game.current_state}")
-        
-
+    def calculate_delta(self, r: float, s1: int, s2: int, a1: int, a2: int) -> float:
+        delta = r + self.gamma * self.PI[s2,a2] - self.PI[s1, a1]
+        return delta
 
 def test_stuff():
     actor = Actor()

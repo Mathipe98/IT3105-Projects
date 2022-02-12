@@ -30,6 +30,8 @@ class RLSystem:
         self.n_actions = self.game.n_actions
         self.actor = Actor(a_alpha, gamma, lamb, epsilon, self.n_states, self.n_actions)
         self.critic = Critic(c_alpha, gamma, lamb, self.n_states, self.n_actions, use_nn)
+        self.steps = []
+        self.angles = []
 
     def reset_eligibilities(self) -> None:
         """blabla
@@ -40,47 +42,96 @@ class RLSystem:
     def start_training(self) -> None:
         """Bla
         """
+        best_steps = 0
+        best_angles = []
         for episode in range(self.n_episodes):
             self.reset_eligibilities()
             self.game.reset()
             steps = 0
             current_state = self.game.current_state
             current_action = self.actor.get_action(current_state)
-            # Keep track of the state-action-pairs we've visited in this episode
-            visited_SAPs = []
             # Now start the step-iteration
+            print(episode)
+            temp = []
+            temp.append(self.game.current_state_parameters[2])
+            visited = []
             while steps < self.max_steps:
                 next_state, reward, done = self.game.step(current_action)
+                temp.append(self.game.current_state_parameters[2])
                 next_action = self.actor.get_action(next_state)
-                visited_SAPs.append((current_state, current_action))
                 delta = self.critic.calculate_delta(
                     r=reward, s1=current_state, s2=next_state, a1=current_action, a2=next_action)
                 # Set the eligibility of the current SAP to 1
                 self.critic.set_eligibility(current_state, current_action)
                 self.actor.set_eligibility(current_state, current_action)
-                for state, action in visited_SAPs:
+                self.actor.update(delta, current_state, current_action)
+                self.critic.update(delta, current_state, current_action)
+                # Iterate through all state-action-pairs
+                for state,action in visited:
                     self.critic.update(delta, state, action)
                     self.actor.update(delta, state, action)
-                    # If s_t != s, then update. We've already dealt with s_t = t (above; set_eligibility)
-                    if state != current_state:
-                        self.critic.update_eligibility(state, action)
-                        self.actor.update_eligibility(state, action)
-                # Update the game s.t. the next state produced is the current state
-                self.game.update_state()
+                    self.critic.update_eligibility(state, action)
+                    self.actor.update_eligibility(state, action)
                 current_state, current_action = next_state, next_action
+                #if (current_state, current_action) not in visited:
+                visited.append((current_state, current_action))
                 steps += 1
                 if done:
+                    if steps > best_steps:
+                        best_angles = temp
+                        best_steps = steps
+                    self.steps.append(steps)
                     break
-            print(f"Episode number:\t {episode}\nSteps:\t {steps}")
+            self.angles = best_angles
+
+    def SARSA(self) -> None:
+        best_steps = 0
+        best_angles = []
+        for episode in range(self.n_episodes):
+            temp = []
+            self.game.reset()
+            steps = 0
+            s = self.game.current_state
+            a = self.actor.get_action(s)
+            temp.append(self.game.current_state_parameters[2])
+            while steps < self.max_steps:
+                s_next, reward, done = self.game.step(a)
+                a_next = self.actor.get_action(s_next)
+                Q1 = self.actor.PI[s, a]
+                Q2 = self.actor.PI[s_next, a_next]
+                self.actor.PI[s, a] = Q1 + self.a_alpha * (reward + self.gamma * Q2 - Q1)
+
+                temp.append(self.game.current_state_parameters[2])
+                s, a = s_next, a_next
+                steps += 1
+                if done:
+                    if steps > best_steps:
+                        best_angles = temp
+                        best_steps = steps
+                    self.steps.append(steps)
+                    break
+            self.angles = best_angles
             
+
+    def visualize_steps(self) -> None:
+        plt.plot(self.steps)
+        plt.xlabel('N episodes')
+        plt.ylabel("Steps")
+        plt.show()
+    
+    def visualize_angles(self) -> None:
+        plt.plot(self.angles)
+        plt.xlabel("N steps")
+        plt.ylabel("Angle (radians)")
+        plt.show()
 
 
 def test():
     """blabla
     """
     global_config = {
-        "n_episodes": 2000,
-        "max_steps": 1000,
+        "n_episodes": 500,
+        "max_steps": 300,
         "use_nn": False,
         "network_dim": None,
         "a_alpha": 0.1,
@@ -94,16 +145,17 @@ def test():
     cart_pole_config = {
         "g": 9.81,
         "m_c": 1,
-        "m_p": 1,
+        "m_p": 0.5,
         "l": 0.5,
-        "tau": 0.02,
+        "tau": 0.01,
         "n_tilings": 1,
         "feat_bins": None
     }
     world = CartPoleGame(**cart_pole_config)
     system = RLSystem(**global_config, game=world)
-    system.start_training()
-
+    system.SARSA()
+    system.visualize_steps()
+    # system.visualize_angles()
 
 
 if __name__ == '__main__':
