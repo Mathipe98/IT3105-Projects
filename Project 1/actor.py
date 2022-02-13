@@ -28,7 +28,7 @@ class Actor:
                 self.eligibility_trace[SAP] = 0
         pass
 
-    def update(self, state: int, action: int, delta: float) -> None:
+    def update(self, SAP: tuple, delta: float) -> None:
         """Updating PI(s, a)
 
         Args:
@@ -36,15 +36,13 @@ class Actor:
             state (int): [description]
             action (int): [description]
         """
-        prediction = self.PI[(state,action)]
-        adjustment = self.alpha * delta * self.eligibility_trace[(state,action)]
-        self.PI[(state,action)] = prediction + adjustment
+        self.PI[SAP] = self.PI[SAP] + self.alpha * delta * self.eligibility_trace[SAP]
 
-    def set_eligibility(self, state: int, action: int=None) -> None:
-        self.eligibility_trace[(state,action)] = 1
+    def set_eligibility(self, SAP: tuple) -> None:
+        self.eligibility_trace[SAP] = 1
     
-    def update_eligibility(self, state: int, action: int=None) -> None:
-        self.eligibility_trace[(state,action)] = self.gamma * self.lamb * self.eligibility_trace[(state,action)]
+    def update_eligibility(self, SAP: tuple) -> None:
+        self.eligibility_trace[SAP] = self.gamma * self.lamb * self.eligibility_trace[SAP]
 
     def reset_eligibilities(self) -> None:
         states = self.game.states

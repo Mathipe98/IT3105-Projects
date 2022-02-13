@@ -58,48 +58,28 @@ class RLSystem:
             print(f"Episode number: {episode}")
             while not done:
                 current_episode_actions.append(current_action)
-                # print(f"Episode number: {episode}")
-                # print(f"Number of visited states: {len(visited)}")
-                # print(f"Current state: {current_state}")
-                # print(f"Current state parameters: {self.game.current_state_parameters}")
                 next_state, reward, done = self.game.step(current_action)
-                # print(f"Next state: {next_state}")
-                # print(f"Next state parameters: {self.game.current_state_parameters}")
-                # print(f"Gained reward from taking action: {reward}")
                 next_action = self.actor.get_action(next_state)
-                # print(f"Next action: {next_action}")
-                delta = self.critic.calculate_delta(
-                    r=reward, s1=current_state, s2=next_state, a1=current_action, a2=next_action)
-                # print(f"Delta value: {delta}")
-                # Set the eligibility of the current SAP to 1
                 if not self.use_nn:
-                    self.critic.set_eligibility(current_state, current_action)
-                    self.actor.set_eligibility(current_state, current_action)
-                    if (current_state, current_action) not in visited:
-                        visited.append((current_state, current_action))
-                    # Iterate through all state-action-pairs
-                    # print(f"Visited states: {[state[0] for state in visited]}")
-                    for state,action in visited:
-                        self.critic.update(state, action, delta)
-                        self.actor.update(state, action, delta)
-                        self.critic.update_eligibility(state, action)
-                        self.actor.update_eligibility(state, action)
+                    current_SAP = (current_state, current_action)
+                    if current_SAP not in visited:
+                        visited.append(current_SAP)
+                    next_SAP = (next_state, next_action)
+                    self.critic.set_eligibility(current_SAP)
+                    self.actor.set_eligibility(current_SAP)
+                    # Calculate delta and propagate it backwards
+                    delta = reward + self.gamma * self.actor.PI[next_SAP] - self.actor.PI[current_SAP]
+                    for SAP in visited:
+                        self.actor.update(SAP, delta)
+                        self.critic.table_update(SAP, delta)
+                        self.actor.update_eligibility(SAP)
+                        self.critic.update_eligibility(SAP)
                 else:
-                    tup = (current_state, current_action, next_state, next_action, reward)
-                    if tup not in visited:
-                        visited.append(tup)
-                    # Iterate through all state-action-pairs
-                    # print(f"Visited states: {[state[0] for state in visited]}")
-                    for s1,a1,_,_,_ in visited:
-                        self.actor.update(s1, a1, delta)
-                # print(f"Current state before assignment: {current_state}")
-                # print(f"Next state before assignment: {next_state}")
+                    pass
                 current_state = next_state
                 current_action = next_action
                 current_steps += 1
                 if done or current_steps >= self.max_steps:
-                    # if self.use_nn:
-                    #     self.critic.batch_update_nn(visited)
                     self.steps[episode] = current_steps
                     self.actions[episode] = current_episode_actions
                     break
@@ -161,25 +141,25 @@ def test_cartpole():
     """blabla
     """
     global_config = {
-        "n_episodes": 500,
+        "n_episodes": 300,
         "max_steps": 300,
         "use_nn": True,
         "network_dim": (15,30,20,5,1),
-        "a_alpha": 0.1,
-        "c_alpha": 0.1,
-        "gamma": 0.99,
-        "lamb": 0.9,
-        "epsilon": 0.5,
+        "a_alpha": 0.08,
+        "c_alpha": 0.08,
+        "gamma": 0.9,
+        "lamb": 0.99,
+        "epsilon": 0.0,
         "display": 0,
         "frame_delay": 0
     }
     cart_pole_config = {
-        "g": 9.81,
+        "g": -9.81,
         "m_c": 1,
         "m_p": 0.1,
         "l": 0.5,
         "tau": 0.02,
-        "buckets": (8,8,16,16)
+        "buckets": (4,4,8,8)
     }
     world = CartPoleGame(**cart_pole_config)
     system = RLSystem(**global_config, game=world)
@@ -189,19 +169,19 @@ def test_cartpole():
 
 def test_hanoi() -> None:
     global_config = {
-        "n_episodes": 300,
-        "max_steps": 40,
+        "n_episodes": 500,
+        "max_steps": 100,
         "use_nn": False,
         "network_dim": (100, 50, 25, 30, 1),
         "a_alpha": 0.1,
         "c_alpha": 0.1,
         "gamma": 0.9,
         "lamb": 0.99,
-        "epsilon": 0.1,
+        "epsilon": 0.0,
         "display": 0,
         "frame_delay": 0
     }
-    game = Hanoi(n_pegs=6, n_discs=4)
+    game = Hanoi(n_pegs=3, n_discs=5)
     system = RLSystem(**global_config, game=game)
     system.train()
     system.visualize_steps()

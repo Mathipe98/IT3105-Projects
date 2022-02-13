@@ -28,6 +28,8 @@ class CartPoleGame():
         self.state_to_encoding = {}
         self.states = self.actions = None
         self.n_states = None
+        # Keep track of the length of the encoded state for use in the NN critic
+        self.encoded_length = len(buckets)
         self.current_state_parameters = self.current_state = None
         self.lower_bounds = [-4.8, -0.5, -0.41887903, -0.8726646259971648]
         self.upper_bounds = [4.8, 0.5, 0.41887903, 0.8726646259971648]
@@ -39,14 +41,7 @@ class CartPoleGame():
         """This is the docstring for this function
         """
         self.generate_all_states()
-        # Now generate all the permutations of the encoding of every state
-        # self.states = np.array([self.decode_state(enc_state) for enc_state in self.state_encodings])
-        # Actions: 0 corresponds to F = 10, 1 corresponds to F = -10
         self.actions = [0, 1]
-        # Now create a state-to-encoded-state map that will be used for the neural network
-        # Note: index = integer = current state, output = the encoding of that specific state
-        # self.state_to_encoding = {
-        #     self.states[i]: self.state_encodings[i] for i in range(self.n_states)}
     
     def get_legal_actions(self, state: int):
         return self.actions
@@ -69,7 +64,6 @@ class CartPoleGame():
             self.x, self.dx, self.theta, self.dtheta]
         current_state = self.discretize_state(self.current_state_parameters)
         self.current_state = self.encoding_to_state[current_state]
-        # self.current_state = self.decode_state(current_encoded_state)
         
     def step(self, action: int) -> Tuple[int, int, bool]:
         """This method calculates and returns the next state given the current state.
@@ -91,17 +85,17 @@ class CartPoleGame():
         x, dx, theta, dtheta = self.current_state_parameters
         costheta = np.cos(theta)
         sintheta = np.sin(theta)
-        temp = (
-            force + self.m_p * self.l * dtheta ** 2 * sintheta
-        ) / total_mass
-        thetaacc = (self.g * sintheta - costheta * temp) / (
-            self.l * (4.0 / 3.0 - self.m_p * costheta ** 2 / total_mass)
-        )
-        xacc = temp - self.m_p * self.l * thetaacc * costheta / total_mass
-        self.x = x + self.tau * dx
-        self.dx = dx + self.tau * xacc
+
+        p1 = self.l * (4/3 - (self.m_p * costheta ** 2) / total_mass)
+        p2 = costheta * (-force - self.m_p * self.l * dtheta ** 2 * sintheta)
+        d2theta = (self.g * sintheta + p2) / p1
+
+        p3 = self.m_p * self.l * (dtheta ** 2 * sintheta - d2theta * costheta)
+        d2x = (force + p3) / total_mass
+        self.dtheta = dtheta + self.tau * d2theta
+        self.dx = dx + self.tau * d2x
         self.theta = theta + self.tau * dtheta
-        self.dtheta = dtheta + self.tau * thetaacc
+        self.x = x + self.tau * dx
         next_state_parameters = [
             self.x,
             self.dx,
@@ -112,21 +106,20 @@ class CartPoleGame():
         next_state = self.encoding_to_state[enc_next_state]
         if abs(self.x) > 2.4 or abs(self.theta) > 0.21:
             done = True
-            reward = -1
+            reward = -100
         elif self.elapsed_time >= 300:
             done = True
-            reward = 10
+            reward = 1
         else:
             done = False
-            reward = 1 #abs(self.current_state_parameters[2] - next_state_parameters[2])
+            reward = 0
         self.current_state_parameters = next_state_parameters
         self.current_state = next_state
         return self.current_state, reward, done
     
-    def encode_state(self, state: int) -> tuple:
+    def encode_state(self, state: int) -> np.ndarray:
         encoded_state_tuple = self.state_to_encoding[state]
-        encoded_state = tuple(encoded_state_tuple)
-        return encoded_state
+        return np.array(encoded_state_tuple)
     
     def decode_state(self, enc_state: np.ndarray) -> int:
         decoded_state = \
@@ -181,7 +174,6 @@ class CartPoleGame():
             self.x, self.dx, self.theta, self.dtheta]
         encoding = self.discretize_state(self.current_state_parameters)
         self.current_state = self.encoding_to_state[encoding]
-        # self.current_state = self.decode_state(encoding)
 
 
 def test_something() -> None:
@@ -194,7 +186,7 @@ def test_something() -> None:
     game.step(test_action)
     next_parameters = game.current_state_parameters
     print(next_parameters)
-    print(game.states)
+    print(game.encoded_length)
 
 
 def asdas():

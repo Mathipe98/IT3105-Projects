@@ -61,7 +61,7 @@ class Critic:
             delta = delta[0][0]
         return delta
 
-    def update(self, state: int, action: int = None, delta: float = None) -> None:
+    def table_update(self, SAP: tuple, delta: float) -> None:
         """Method for updating the value function of the critic by the delta value
 
         Args:
@@ -70,22 +70,17 @@ class Critic:
             action (int): The action performed in the current state, only used if use_nn is False.
                         Defaults to None.
         """
-        if not self.use_nn:
-            prediction = self.values[(state, action)]
-            adjustment = self.alpha * delta * \
-                self.eligibility_trace[(state, action)]
-            self.values[(state, action)] = prediction + adjustment
-
-    # def update_nn(self, s1: int, s2: int, reward: float) -> None:
-    #     s1_one_hot = self.id_matrix[s1:s1+1]
-    #     s2_one_hot = self.id_matrix[s2:s2+1]
-    #     target = reward + self.gamma * self.model.predict(s2_one_hot)
-    #     self.model.fit(s1_one_hot, target, epochs=1, verbose=0)
+        prediction = self.values[SAP]
+        adjustment = self.alpha * delta * self.eligibility_trace[SAP]
+        self.values[SAP] = prediction + adjustment
+    
+    
 
     def step_update_nn(self, s1: int, s2: int) -> None:
         n_states = self.id_matrix.shape[0]
         s1_hot = self.id_matrix[s1:s1+1].reshape(n_states,)
         s2_hot = self.id_matrix[s2:s2+1].reshape(n_states,)
+        future_reward = self.model.predict(s2_hot)
 
 
     def batch_update_nn(self, visited: List) -> None:
@@ -105,14 +100,12 @@ class Critic:
         self.model.fit(inputs, targets,
                        batch_size=inputs.shape[0], epochs=1, verbose=0)
 
-    def set_eligibility(self, state: int, action: int = None) -> None:
-        if not self.use_nn:
-            self.eligibility_trace[(state, action)] = 1
+    def set_eligibility(self, SAP: tuple) -> None:
+        self.eligibility_trace[SAP] = 1
 
-    def update_eligibility(self, state: int, action: int = None) -> None:
-        if not self.use_nn:
-            self.eligibility_trace[(state, action)] = self.gamma * \
-                self.lamb * self.eligibility_trace[(state, action)]
+    def update_eligibility(self, SAP: tuple) -> None:
+        self.eligibility_trace[SAP] = self.gamma * \
+            self.lamb * self.eligibility_trace[SAP]
 
     def reset_eligibilities(self) -> None:
         states = self.game.states

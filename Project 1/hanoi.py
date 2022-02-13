@@ -6,7 +6,7 @@ from pprint import pprint
 import copy
 from tile_coding import create_tilings, get_state_encoding
 import sys
-sys.setrecursionlimit(10000)
+sys.setrecursionlimit(1000000)
 
 
 class Hanoi():
@@ -23,6 +23,7 @@ class Hanoi():
         self.n_states = None
         self.state_to_encoding = {}
         self.encoding_to_state = {}
+        self.counter = 0
         self.initialize()
     
     def initialize(self) -> None:
@@ -118,18 +119,23 @@ class Hanoi():
     
     def is_winning(self, enc_state: List) -> bool:
         return enc_state[-1] == list(range(1, self.n_discs+1))
-    
-    def generate_all_states(self, enc_state: List=None) -> None:
-        if enc_state is None:
-            enc_state = self.current_state_parameters
-        legal_moves = self.generate_legal_actions(enc_state)
-        for action in legal_moves:
-            new_state = self.perform_action(enc_state, action)
-            if new_state in self.encoded_states:
-                continue
-            else:
-                self.encoded_states.append(new_state)
-                self.generate_all_states(new_state)
+
+    def generate_all_states(self) -> None:
+        enc_state = self.current_state_parameters
+        explored_states = []
+        states_to_explore = [enc_state]
+        while True:
+            for state in states_to_explore:
+                legal_moves = self.generate_legal_actions(state)
+                for action in legal_moves:
+                    new_state = self.perform_action(state, action)
+                    if new_state not in self.encoded_states:
+                        self.encoded_states.append(new_state)
+                        states_to_explore.append(new_state)
+                explored_states.append(state)
+                states_to_explore.remove(state)
+            if len(states_to_explore) == 0:
+                break
         
     def print_state(self, enc_state: List) -> None:
         statenew = copy.deepcopy(enc_state)
@@ -149,19 +155,7 @@ class Hanoi():
 
 
 if __name__ == "__main__":
-    game = Hanoi(n_pegs=4, n_discs=4)
-    print(game.current_state_parameters)
-    print(game.current_state)
-    print(game.get_legal_actions(game.current_state))
-    choice = random.choice(game.get_legal_actions(game.current_state))
-    print(choice)
-    next_state, reward, done = game.step(choice)
-    print(game.current_state_parameters)
-    print(next_state, reward, done)
-    game.current_state_parameters = [[], [], [1], [2,3,4]]
-    game.current_state = game.encoding_to_state[tuple(tuple(x) for x in game.current_state_parameters)]
-    actions = game.get_legal_actions(game.current_state)
-    print(game.current_state_parameters, actions)
-    next_state, reward, done = game.step((3,4))
-    print(next_state, reward, done)
-    print(game.states)
+    game = Hanoi(n_pegs=3, n_discs=3)
+    print("hello")
+    print(game.counter)
+    
