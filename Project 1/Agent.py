@@ -169,7 +169,7 @@ def test_cartpole():
 
 def test_hanoi() -> None:
     global_config = {
-        "n_episodes": 500,
+        "n_episodes": 1000,
         "max_steps": 100,
         "use_nn": False,
         "network_dim": (100, 50, 25, 30, 1),
@@ -181,7 +181,7 @@ def test_hanoi() -> None:
         "display": 0,
         "frame_delay": 0
     }
-    game = Hanoi(n_pegs=3, n_discs=5)
+    game = Hanoi(n_pegs=5, n_discs=6)
     system = RLSystem(**global_config, game=game)
     system.train()
     system.visualize_steps()
