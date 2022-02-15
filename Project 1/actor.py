@@ -2,6 +2,7 @@ from typing import Any
 import numpy as np
 import random
 
+np.random.seed(123)
 
 class Actor:
 
@@ -11,9 +12,6 @@ class Actor:
         self.epsilon = epsilon
         self.PI = {}
         self.eligibility_trace = {}
-        # self.PI = np.zeros((state_buckets + (self.n_actions,)))
-        # self.eligibility_trace = np.zeros(shape=(self.n_states, self.n_actions))
-        # self.eligibility_trace = np.zeros(state_buckets + (self.n_actions,))
         self.debug = 0
         self.game = game
         self.initialize()
@@ -56,8 +54,8 @@ class Actor:
         actions = self.game.get_legal_actions(state)
         if np.random.uniform(0,1) < self.epsilon:
              return random.choice(actions)
-        possible_actions = {(state, action): self.PI[(state, action)] for action in actions}
-        return max(possible_actions, key=possible_actions.get)[1]
+        possible_SAPs = {(state, action): self.PI[(state, action)] for action in actions}
+        return max(possible_SAPs, key=possible_SAPs.get)[1]
 
     def calculate_delta(self, r: float, s1: int, s2: int, a1: int, a2: int) -> float:
         Q1 = self.PI[s1][a1]

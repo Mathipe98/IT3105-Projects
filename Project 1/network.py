@@ -6,14 +6,17 @@ from collections import deque
 import time
 import random
 
+np.random.seed(123)
+tf.random.set_seed(123)
 
-def model(state_shape: tuple, dimensions: tuple, lr: float) -> tf.keras.Sequential:
+def create_model(state_shape: tuple, dimensions: tuple, lr: float) -> tf.keras.Sequential:
     """ The agent maps X-states to Y-output
     e.g. The neural network output is [0.4], which is the
     predicted value of state X.
     """
     # Initialize the network weights
     init = tf.keras.initializers.HeUniform()
+    tf.random.set_seed(123)
     model = keras.Sequential()
     for i in range(len(dimensions)):
         dimension = dimensions[i]
@@ -31,4 +34,5 @@ if __name__ == '__main__':
     dims = (5,1)
     lr = 0.001
     state_shape = (5,)
-    test = model(state_shape, dims, lr)
+    test = create_model(state_shape, dims, lr)
+    print("hello")

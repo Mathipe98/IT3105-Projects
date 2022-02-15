@@ -20,9 +20,10 @@ class Hanoi():
         self.current_state = None
         self.encoded_states = []
         self.states = []
-        self.n_states = None
         self.state_to_encoding = {}
         self.encoding_to_state = {}
+        # Keep track of the shape of the encoded state for use in the NN critic
+        self.enc_shape = (n_pegs,)
         self.counter = 0
         self.initialize()
     
@@ -32,7 +33,6 @@ class Hanoi():
         for _ in range(self.n_pegs - 1):
             self.current_state_parameters.append([])
         self.generate_all_states()
-        self.n_states = len(self.encoded_states)
         assert len(self.encoded_states) != 0, "States not generated"
         for state_number in range(len(self.encoded_states)):
             encoded_state_tuple = tuple(tuple(x) for x in self.encoded_states[state_number])
@@ -42,15 +42,27 @@ class Hanoi():
         key = tuple(tuple(x) for x in self.current_state_parameters)
         self.current_state = self.encoding_to_state[key]
 
-    def reset(self) -> None:
+    def reset(self) -> int:
         self.current_state_parameters = []
         self.current_state_parameters.append(list(range(1,self.n_discs+1)))
         for _ in range(self.n_pegs - 1):
             self.current_state_parameters.append([])
         key = tuple(tuple(x) for x in self.current_state_parameters)
         self.current_state = self.encoding_to_state[key]
+        return self.current_state
         
     def step(self, action) -> Tuple[int, int, int]:
+        """Method that performs an action and thereby changes the state of the world.
+        The method updates and returns the new state that is the result of the current
+        action applied to the current state
+
+        Args:
+            action ([type]): Action to be performed on the current state
+
+        Returns:
+            Tuple[int, int, int]: A tuple containing the number of the new state, the reward for the
+                                    transition, and whether the state is a terminal state 
+        """
         enc_next_state = self.perform_action(self.current_state_parameters, action)
         done = self.is_winning(enc_next_state)
         # 10 reward if we're winning, else -1 because we want as few steps as possible
@@ -59,8 +71,50 @@ class Hanoi():
         tupled_state = tuple(tuple(x) for x in self.current_state_parameters)
         state_number = self.encoding_to_state[tupled_state]
         return state_number, reward, done
+    
+    def encode_state(self, state: int) -> np.ndarray:
+        """Method for encoding a state number in such a way that a neural
+        network can process it in a generalized manner.
+        In this case, we sum the values of all discs on each peg, such that each
+        index results to the sum of the discs on that peg.
+        This means that each index corresponds to a peg, and each peg has a value
+        between 0 and the sum of all discs 1 -> n
+
+        Args:
+            state (int): State number
+
+        Returns:
+            np.ndarray: Resulting numpy array from above logic
+        """
+        encoded_state_tuple = self.state_to_encoding[state]
+        encoded_state = np.array([np.sum(x) for x in encoded_state_tuple])
+        assert encoded_state.shape == self.enc_shape, f"Shape of state encoding doesn't match encoded state attribute of class ({encoded_state.shape} != {self.enc_shape})"
+        return encoded_state
+    
+    def decode_state(self, encoded_state: np.ndarray) -> int:
+        """Method that takes in an encoded state, and turns it into a number
+
+        Args:
+            encoded_state (np.ndarray): Aforementioned state
+
+        Returns:
+            int: Number corresponding to that state
+        """
+        encoded_state_tuple = tuple(tuple(x) for x in encoded_state)
+        state = self.encoding_to_state[encoded_state_tuple]
+        return state
 
     def get_legal_actions(self, state: int) -> List:
+        """Method used during the training-loop that takes in a state number and returns the legal actions.
+        Very similar to below method; they are exactly identical, only that this takes in a number, and
+        the below an array. Could easily be improved and refactored, but I'm too lazy
+
+        Args:
+            state (int): State number
+
+        Returns:
+            List: List of tuples, where a tuple is an action
+        """
         tuple_enc_state = self.state_to_encoding[state]
         state = list(list(x) for x in tuple_enc_state)
         # Initialize empty list to append valid moves to.
@@ -84,6 +138,8 @@ class Hanoi():
         return valid
 
     def generate_legal_actions(self, enc_state: List) -> List:
+        """See above docstring
+        """
         # Initialize empty list to append valid moves to.
         valid = []
         # Loop through each peg.
@@ -105,6 +161,16 @@ class Hanoi():
         return valid
 
     def perform_action(self, enc_state: List, action: tuple) -> List:
+        """Method that takes in an encoded state, and performs an action in the
+        form of a tuple
+
+        Args:
+            enc_state (List): Encoding of the state in question
+            action (tuple): Action to be performed on the state
+
+        Returns:
+            List: Encoding of the resulting state
+        """
         enc_next_state = copy.deepcopy(enc_state)
         # Get the pegs from and to which the moves are to be done.
         source = action[0]
@@ -118,9 +184,22 @@ class Hanoi():
         return enc_next_state
     
     def is_winning(self, enc_state: List) -> bool:
+        """Check whether or not the state is winning, which corresponds
+        to all discs being small-to-large ordered on the final peg
+
+        Args:
+            enc_state (List): Encoding of the state in question
+
+        Returns:
+            bool: Whether state is winning or not
+        """
         return enc_state[-1] == list(range(1, self.n_discs+1))
 
     def generate_all_states(self) -> None:
+        """Method for generating all possible states in the Hanoi-problem.
+        Takes a fair bit of time with 5 pegs and 6 discs due to the sheer number of
+        ways the states can be manipulated in that scenario.
+        """
         enc_state = self.current_state_parameters
         explored_states = []
         states_to_explore = [enc_state]
@@ -137,7 +216,13 @@ class Hanoi():
             if len(states_to_explore) == 0:
                 break
         
-    def print_state(self, enc_state: List) -> None:
+    def print_state(self, state: int) -> None:
+        """Method for printing the encoded state in a visually appealing way
+
+        Args:
+            enc_state (List): Encoding of the state
+        """
+        enc_state = list(list(x) for x in self.state_to_encoding[state])
         statenew = copy.deepcopy(enc_state)
         # Iterate through statenew and insert blanks in any position without a peg.
         for i in statenew:
@@ -151,11 +236,13 @@ class Hanoi():
             for j in i:
                 print(str(j) + "|", end=' ')
             print()
-        print('----------------------')
+        print('----------------------\n')
 
 
 if __name__ == "__main__":
-    game = Hanoi(n_pegs=3, n_discs=3)
-    print("hello")
-    print(game.counter)
-    
+    game = Hanoi(n_pegs=4, n_discs=4)
+    print(game.current_state)
+    print(game.current_state_parameters)
+    print(game.decode_state(game.current_state_parameters))
+    print(game.encode_state(game.current_state))
+    print(game.enc_shape)

@@ -27,12 +27,13 @@ class CartPoleGame():
         self.encoding_to_state = {}
         self.state_to_encoding = {}
         self.states = self.actions = None
-        self.n_states = None
-        # Keep track of the length of the encoded state for use in the NN critic
-        self.encoded_length = len(buckets)
+        # Keep track of the shape of the encoded state for use in the NN critic
+        self.enc_shape = (len(buckets),)
         self.current_state_parameters = self.current_state = None
-        self.lower_bounds = [-4.8, -0.5, -0.41887903, -0.8726646259971648]
-        self.upper_bounds = [4.8, 0.5, 0.41887903, 0.8726646259971648]
+        #self.lower_bounds = [-4.8, -0.5, -0.41887903, -0.8726646259971648]
+        #self.upper_bounds = [4.8, 0.5, 0.41887903, 0.8726646259971648]
+        self.lower_bounds = [-2.4, -0.5, -0.21, -0.8726646259971648]
+        self.upper_bounds = [2.4, 0.5, 0.21, 0.8726646259971648]
         # Keep track of angles for best episode
         self.angles = []
         self.initialize()
@@ -46,7 +47,7 @@ class CartPoleGame():
     def get_legal_actions(self, state: int):
         return self.actions
 
-    def reset(self) -> None:
+    def reset(self) -> int:
         """Method for starting a new episode, which includes resetting
         all states and state parameters in the simworld
         """
@@ -64,6 +65,7 @@ class CartPoleGame():
             self.x, self.dx, self.theta, self.dtheta]
         current_state = self.discretize_state(self.current_state_parameters)
         self.current_state = self.encoding_to_state[current_state]
+        return self.current_state
         
     def step(self, action: int) -> Tuple[int, int, bool]:
         """This method calculates and returns the next state given the current state.
@@ -118,6 +120,19 @@ class CartPoleGame():
         return self.current_state, reward, done
     
     def encode_state(self, state: int) -> np.ndarray:
+        """Method that takes in a state number, and encodes this state in a general way
+        such that a neural network can train and predict on it.
+        The reason that this method returns an array, while the "states" attribute of the
+        class uses tuples, is because tuples are hashable, while tuples are not.
+        However this method will only be called within the neural network critic, so it
+        won't affect anything else.
+
+        Args:
+            state (int): State number representation of the state in question
+
+        Returns:
+            np.ndarray: Result array of aforementioned encoding
+        """
         encoded_state_tuple = self.state_to_encoding[state]
         return np.array(encoded_state_tuple)
     
@@ -156,9 +171,9 @@ class CartPoleGame():
     
     def generate_all_states(self) -> None:
         all_encoded_states = np.array(list(product(*(range(0, self.buckets[i]) for i in range(len(self.buckets))))))
-        self.n_states = len(all_encoded_states)
+        n_states = len(all_encoded_states)
         self.states = []
-        for state_num in range(self.n_states):
+        for state_num in range(n_states):
             encoded_state = tuple(all_encoded_states[state_num])
             self.state_to_encoding[state_num] = encoded_state
             self.encoding_to_state[encoded_state] = state_num
@@ -195,6 +210,7 @@ def asdas():
     game.set_state_manually(test_state)
     print(game.current_state)
     print(game.discretize_state(test_state))
+    print(game.encode_state(game.current_state))
 
 if __name__ == "__main__":
-    test_something()
+    asdas()
