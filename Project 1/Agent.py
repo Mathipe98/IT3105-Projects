@@ -18,20 +18,24 @@ class Agent:
     """
 
     def __init__(self, n_episodes: int, max_steps: int,
-                 use_nn: bool, network_dim: Tuple, step_train_interval: int,
+                 use_nn: bool, network_dim: Tuple, train_interval: int,
                  a_alpha: float, c_alpha: float, gamma: float, lamb: float,
-                 epsilon: float, display: Any, frame_delay: float,
+                 epsilon_start: float, epsilon_finish: float, display: Any, frame_delay: float,
+                 chosen_game: int,
                  game: CartPoleGame) -> None:
         self.n_episodes = n_episodes
         self.max_steps = max_steps
         self.use_nn, self.network_dim = use_nn, network_dim
-        self.step_train_interval = step_train_interval
+        self.train_interval = train_interval
         self.a_alpha, self.c_alpha = a_alpha, c_alpha
-        self.gamma, self.lamb, self.epsilon = gamma, lamb, epsilon
+        self.gamma, self.lamb, = gamma, lamb
+        self.epsilon_start, self.epsilon_finish = epsilon_start, epsilon_finish
         self.display, self.frame_delay = display, frame_delay
+        self.chosen_game = chosen_game
         self.game = game
-        self.actor = Actor(a_alpha, gamma, lamb, epsilon, game=self.game)
-        self.critic = Critic(c_alpha, gamma, lamb, game=self.game, use_nn=use_nn, network_dim=network_dim)
+        self.actor = Actor(a_alpha, gamma, lamb, epsilon_start, game=self.game)
+        self.critic = Critic(c_alpha, gamma, lamb, game=self.game,
+                             use_nn=use_nn, network_dim=network_dim)
         # Create sets to keep track of number of steps, actions, and what starting state for every episode (for logging)
         self.steps = {}
         self.actions = {}
@@ -65,6 +69,11 @@ class Agent:
         replay_memory = deque(maxlen=50000)
 
         for episode in range(self.n_episodes):
+            # At the start of every episode, we decay epsilon ever so slightly
+            r = max((self.n_episodes - episode) / self.n_episodes, 0)
+            decayed_epsilon = (self.epsilon_start -
+                               self.epsilon_finish) * r + self.epsilon_finish
+            self.actor.epsilon = decayed_epsilon
             self.reset_eligibilities()
             current_state = self.game.reset()
             current_action = self.actor.get_action(current_state)
@@ -79,7 +88,7 @@ class Agent:
                 current_episode_actions.append(current_action)
                 next_state, reward, done = self.game.step(current_action)
                 # print(next_state)
-                
+
                 next_action = self.actor.get_action(next_state)
                 current_SAP = (current_state, current_action)
                 if current_SAP not in visited:
@@ -88,11 +97,14 @@ class Agent:
                 self.actor.set_eligibility(current_SAP)
                 if self.use_nn:
                     shape = self.game.enc_shape
-                    encoded_current_state = self.game.encode_state(current_state)
+                    encoded_current_state = self.game.encode_state(
+                        current_state)
                     encoded_next_state = self.game.encode_state(next_state)
                     # Reshape in prediction because the model expects input dimensions (batch_size, length of encoded state)
-                    current_state_prediction = self.critic.evaluate_state(encoded_current_state.reshape(1, shape[0]))
-                    next_state_prediction = self.critic.evaluate_state(encoded_next_state.reshape(1, shape[0]))
+                    current_state_prediction = self.critic.evaluate_state(
+                        encoded_current_state.reshape(1, shape[0]))
+                    next_state_prediction = self.critic.evaluate_state(
+                        encoded_next_state.reshape(1, shape[0]))
                 else:
                     self.critic.set_eligibility(current_SAP)
                     current_state_prediction = self.critic.values[current_SAP]
@@ -110,9 +122,10 @@ class Agent:
                         self.critic.table_update(SAP, delta)
                         self.critic.update_eligibility(SAP)
                 if self.use_nn:
-                    replay_memory.append([encoded_current_state, target, reward, done])
+                    replay_memory.append(
+                        [encoded_current_state, target, reward, done])
                     # Perform training every n steps, and only if we've encountered sufficient number of previous examples
-                    if current_steps % self.step_train_interval == 0 and len(replay_memory) > 1000:
+                    if current_steps % self.train_interval == 0 and len(replay_memory) > 1000:
                         self.critic.train(replay_memory)
                 current_state = next_state
                 current_action = next_action
@@ -121,7 +134,7 @@ class Agent:
                     self.steps[episode] = current_steps
                     self.actions[episode] = current_episode_actions
                     break
-            
+
     def visualize_steps(self) -> None:
         """Simple method for generating a plot with number of steps as a function of number of episodes
         """
@@ -129,11 +142,12 @@ class Agent:
         plt.xlabel('N episodes')
         plt.ylabel("Steps")
         plt.show()
-    
+
     def visualize_hanoi(self) -> None:
         """Specific method for visualizing the states of the Hanoi-game
         """
-        best_episode = min(self.actions, key=lambda key: len(self.actions[key]))
+        best_episode = min(
+            self.actions, key=lambda key: len(self.actions[key]))
         best_actions = self.actions[best_episode]
         start = self.game.reset()
         print("\n")
@@ -143,6 +157,29 @@ class Agent:
             self.game.step(action)
             next_state = self.game.current_state_parameters
             self.game.print_state(next_state)
+
+    def run_game(self) -> None:
+        current_state = self.game.reset()
+        self.actor.epsilon = 0
+        current_action = self.actor.get_action(current_state)
+        steps = 0
+        done = False
+        while not done:
+            steps += 1
+            next_state, _, done = self.game.step(current_action)
+            next_action = self.actor.get_action(next_state)
+            if self.chosen_game == 2:
+                self.game.print_state(current_state)
+            else:
+                print(self.game.current_state_parameters)
+            time.sleep(self.frame_delay)
+            current_state = next_state
+            current_action = next_action
+        if self.chosen_game == 2:
+            self.game.print_state(next_state)
+        else:
+            print(self.game.current_state_parameters)
+        print(f"Length of run: {steps}")
     
     def visualize_cartpole(self) -> None:
         """Specific method for visualizing the states of the Cartpole-game
@@ -207,7 +244,7 @@ def test_cartpole():
         "epsilon": 0.1,
         "display": 0,
         "frame_delay": 0,
-        "step_train_interval": 50,
+        "train_interval": 50,
     }
     cart_pole_config = {
         "g": -9.81,
@@ -225,25 +262,28 @@ def test_cartpole():
 
 def test_hanoi() -> None:
     global_config = {
-        "n_episodes": 1000,
+        "n_episodes": 200,
         "max_steps": 100,
-        "use_nn": False,
+        "use_nn": True,
         "network_dim": (24,12,1),
         "a_alpha": 0.1,
         "c_alpha": 0.001,
         "gamma": 0.9,
         "lamb": 0.99,
-        "epsilon": 0.2,
+        "epsilon_start": 1,
+        "epsilon_finish": 0.0,
         "display": 0,
         "frame_delay": 0,
-        "step_train_interval": 5,
+        "train_interval": 5,
     }
-    game = Hanoi(n_pegs=4, n_discs=3)
+    hanoi_config = {
+        "n_pegs": 3,
+        "n_discs": 4,
+    }
+    game = Hanoi(**hanoi_config)
     system = Agent(**global_config, game=game)
     system.train()
     system.visualize_steps()
-    best_episode = min(system.actions, key=lambda key: len(system.actions[key]))
-    best_actions = system.actions[best_episode]
 
     run_hanoi_game(system, game, 1)
 
@@ -260,7 +300,7 @@ def test_gambler() -> None:
         "epsilon": 0.1,
         "display": 0,
         "frame_delay": 0,
-        "step_train_interval": 50,
+        "train_interval": 50,
     }
     gambler_params = {
         "p_win": 0.4,

@@ -43,7 +43,7 @@ class CartPoleGame():
         """
         self.generate_all_states()
         self.actions = [0, 1]
-    
+
     def get_legal_actions(self, state: int):
         return self.actions
 
@@ -66,7 +66,7 @@ class CartPoleGame():
         current_state = self.discretize_state(self.current_state_parameters)
         self.current_state = self.encoding_to_state[current_state]
         return self.current_state
-        
+
     def step(self, action: int) -> Tuple[int, int, bool]:
         """This method calculates and returns the next state given the current state.
         Since this simworld keeps track of its own state parameters, we only need to know
@@ -118,7 +118,7 @@ class CartPoleGame():
         self.current_state_parameters = next_state_parameters
         self.current_state = next_state
         return self.current_state, reward, done
-    
+
     def encode_state(self, state: int) -> np.ndarray:
         """Method that takes in a state number, and encodes this state in a general way
         such that a neural network can train and predict on it.
@@ -135,7 +135,7 @@ class CartPoleGame():
         """
         encoded_state_tuple = self.state_to_encoding[state]
         return np.array(encoded_state_tuple)
-    
+
     def decode_state(self, enc_state: np.ndarray) -> int:
         decoded_state = \
             enc_state[0] * self.buckets[1] * self.buckets[2] * self.buckets[3] +\
@@ -150,11 +150,11 @@ class CartPoleGame():
         By doing this, very similar observations can be treated
         as the same and it reduces the state space so that the 
         Q-table can be smaller and more easily filled.
-        
+
         Input:
         state_parameters (List): Tuple containing 4 floats describing the current
                      state of the environment.
-        
+
         Output:
         discretized (tuple): Tuple containing 4 non-negative integers smaller 
                              than n where n is the number in the same position
@@ -162,15 +162,16 @@ class CartPoleGame():
         """
         discretized = list()
         for i in range(len(state_parameters)):
-            scaling = ((state_parameters[i] + abs(self.lower_bounds[i])) 
+            scaling = ((state_parameters[i] + abs(self.lower_bounds[i]))
                        / (self.upper_bounds[i] - self.lower_bounds[i]))
             new_obs = int(round((self.buckets[i] - 1) * scaling))
             new_obs = min(self.buckets[i] - 1, max(0, new_obs))
             discretized.append(new_obs)
         return tuple(discretized)
-    
+
     def generate_all_states(self) -> None:
-        all_encoded_states = np.array(list(product(*(range(0, self.buckets[i]) for i in range(len(self.buckets))))))
+        all_encoded_states = np.array(
+            list(product(*(range(0, self.buckets[i]) for i in range(len(self.buckets))))))
         n_states = len(all_encoded_states)
         self.states = []
         for state_num in range(n_states):
@@ -178,7 +179,7 @@ class CartPoleGame():
             self.state_to_encoding[state_num] = encoded_state
             self.encoding_to_state[encoded_state] = state_num
             self.states.append(state_num)
-        
+
     def set_state_manually(self, parameters: List) -> None:
         self.reset()
         self.x = parameters[0]
@@ -189,28 +190,3 @@ class CartPoleGame():
             self.x, self.dx, self.theta, self.dtheta]
         encoding = self.discretize_state(self.current_state_parameters)
         self.current_state = self.encoding_to_state[encoding]
-
-
-def test_something() -> None:
-    game = CartPoleGame()
-    test_state = [-0.03117389, 0.024164418, 0.0106699085, 0.04865943]
-    game.set_state_manually(test_state)
-    print(game.current_state_parameters, game.current_state)
-    print(game.encode_state(game.current_state))
-    test_action = 0
-    game.step(test_action)
-    next_parameters = game.current_state_parameters
-    print(next_parameters)
-    print(game.encoded_length)
-
-
-def asdas():
-    game = CartPoleGame()
-    test_state = [10,10,10,10]
-    game.set_state_manually(test_state)
-    print(game.current_state)
-    print(game.discretize_state(test_state))
-    print(game.encode_state(game.current_state))
-
-if __name__ == "__main__":
-    asdas()
