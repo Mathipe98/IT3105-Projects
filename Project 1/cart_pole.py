@@ -11,9 +11,18 @@ class CartPoleGame():
     """Docstring here
     """
 
-    def __init__(self, g: float = 9.8, m_c: float = 1, m_p: float = 0.1,
+    def __init__(self, g: float = -9.81, m_c: float = 1, m_p: float = 0.1,
                  l: float = 0.5, tau: float = 0.02, buckets: List = None) -> None:
-        # Set variables for this particular game
+        """Constructor for the Cartpole problem
+
+        Args:
+            g (float, optional): Value of gravity. Defaults to -9.81.
+            m_c (float, optional): Mass of the cart. Defaults to 1.
+            m_p (float, optional): Mass of the pole. Defaults to 0.1.
+            l (float, optional): Length of the pole. Defaults to 0.5.
+            tau (float, optional): Timestep between iterations. Defaults to 0.02.
+            buckets (List, optional): Number of buckets/bins for each variable (used in state-discretization). Defaults to None.
+        """
         if buckets is None:
             buckets = (4, 4, 8, 8)
         self.g, self.m_c, self.m_p, self.l, self.tau = g, m_c, m_p, l, tau
@@ -30,8 +39,6 @@ class CartPoleGame():
         # Keep track of the shape of the encoded state for use in the NN critic
         self.enc_shape = (len(buckets),)
         self.current_state_parameters = self.current_state = None
-        #self.lower_bounds = [-4.8, -0.5, -0.41887903, -0.8726646259971648]
-        #self.upper_bounds = [4.8, 0.5, 0.41887903, 0.8726646259971648]
         self.lower_bounds = [-2.4, -0.5, -0.21, -0.8726646259971648]
         self.upper_bounds = [2.4, 0.5, 0.21, 0.8726646259971648]
         # Keep track of angles for best episode
@@ -39,12 +46,23 @@ class CartPoleGame():
         self.initialize()
 
     def initialize(self) -> None:
-        """This is the docstring for this function
+        """Method for initializing the game by generating all states and
+        assigning what actions are possible in the game (in this case it's only binary).
         """
         self.generate_all_states()
         self.actions = [0, 1]
 
-    def get_legal_actions(self, state: int):
+    def get_legal_actions(self, state: int) -> List:
+        """Method that retrieves all legal actions given the current state.
+        It's worth noting that in this environment, both actions are always
+        legal. So we just return them both without analysing the state.
+
+        Args:
+            state (int): State that wants to retrieve legal actions
+
+        Returns:
+            List: List of legal actions given the state
+        """
         return self.actions
 
     def reset(self) -> int:
@@ -137,6 +155,16 @@ class CartPoleGame():
         return np.array(encoded_state_tuple)
 
     def decode_state(self, enc_state: np.ndarray) -> int:
+        """Method that decodes a given encoded state.
+        Works just the same way as looking up encoding_to_state,
+        so it's not actually used. But I just left it here anyway.
+
+        Args:
+            enc_state (np.ndarray): Array encoding of state
+
+        Returns:
+            int: State number representation
+        """
         decoded_state = \
             enc_state[0] * self.buckets[1] * self.buckets[2] * self.buckets[3] +\
             enc_state[1] * self.buckets[2] * self.buckets[3] +\
@@ -170,6 +198,10 @@ class CartPoleGame():
         return tuple(discretized)
 
     def generate_all_states(self) -> None:
+        """Method that generates all possible (discretized) states for the
+        current game and its parameters. We have to do this in order to provide
+        a table-lookup for both the actor and critic.
+        """
         all_encoded_states = np.array(
             list(product(*(range(0, self.buckets[i]) for i in range(len(self.buckets))))))
         n_states = len(all_encoded_states)
@@ -181,6 +213,12 @@ class CartPoleGame():
             self.states.append(state_num)
 
     def set_state_manually(self, parameters: List) -> None:
+        """Debug method for manually setting state and state parameters
+        for debugging purposes.
+
+        Args:
+            parameters (List): List of concrete parameters to set.
+        """
         self.reset()
         self.x = parameters[0]
         self.dx = parameters[1]

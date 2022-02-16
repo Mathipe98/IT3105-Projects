@@ -10,10 +10,14 @@ sys.setrecursionlimit(1000000)
 
 
 class Hanoi():
-    """Docstring here
-    """
 
     def __init__(self, n_pegs: int=3, n_discs: int=3):
+        """Constructor for the Hanoi game
+
+        Args:
+            n_pegs (int, optional): Number of pegs. Defaults to 3.
+            n_discs (int, optional): Number of discs. Defaults to 3.
+        """
         self.n_pegs = n_pegs
         self.n_discs = n_discs
         self.current_state_parameters = None
@@ -28,6 +32,11 @@ class Hanoi():
         self.initialize()
     
     def initialize(self) -> None:
+        """Method for initializing the game and setting up necessary parameters,
+        as well as generating all possible states for the game.
+        This includes both generating all states, but also all encoded states
+        and all maps to/from encoded states and vice versa.
+        """
         self.current_state_parameters = []
         self.current_state_parameters.append(list(range(1,self.n_discs+1)))
         for _ in range(self.n_pegs - 1):
@@ -43,6 +52,12 @@ class Hanoi():
         self.current_state = self.encoding_to_state[key]
 
     def reset(self) -> int:
+        """Method for resetting the game and all parameters when starting
+        a new episode.
+
+        Returns:
+            int: The initial state of the game (which in the Towers of Hanoi is always the same)
+        """
         self.current_state_parameters = []
         self.current_state_parameters.append(list(range(1,self.n_discs+1)))
         for _ in range(self.n_pegs - 1):
@@ -51,13 +66,13 @@ class Hanoi():
         self.current_state = self.encoding_to_state[key]
         return self.current_state
         
-    def step(self, action) -> Tuple[int, int, int]:
+    def step(self, action: tuple) -> Tuple[int, int, int]:
         """Method that performs an action and thereby changes the state of the world.
         The method updates and returns the new state that is the result of the current
         action applied to the current state
 
         Args:
-            action ([type]): Action to be performed on the current state
+            action (tuple): Action to be performed on the current state
 
         Returns:
             Tuple[int, int, int]: A tuple containing the number of the new state, the reward for the
@@ -237,12 +252,3 @@ class Hanoi():
                 print(str(j) + "|", end=' ')
             print()
         print('----------------------\n')
-
-
-if __name__ == "__main__":
-    game = Hanoi(n_pegs=4, n_discs=4)
-    print(game.current_state)
-    print(game.current_state_parameters)
-    print(game.decode_state(game.current_state_parameters))
-    print(game.encode_state(game.current_state))
-    print(game.enc_shape)

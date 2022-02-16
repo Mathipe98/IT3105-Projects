@@ -12,6 +12,16 @@ class Critic:
 
     def __init__(self, alpha: float, gamma: float, lamb: float,
                  game: Any, use_nn: bool = False, network_dim: tuple = None) -> None:
+        """Constructor for the Critic in the Actor-Critic algorithm.
+
+        Args:
+            alpha (float): Learning rate of the critic
+            gamma (float): Decay rate of future rewards
+            lamb (float): Decay rate of the eligibility trace
+            game (Any): Object containing the game to play. Only uses generic method/function calls.
+            use_nn (bool, optional): Whether to use a neural network. Defaults to False.
+            network_dim (tuple, optional): Dimension of potential neural network. Defaults to None.
+        """
         self.alpha, self.gamma, self.lamb = alpha, gamma, lamb
         self.game = game
         # Neural network stuff
@@ -33,7 +43,8 @@ class Critic:
         AND the action performed in that state.
         """
         if self.use_nn:
-            self.model = create_model(self.game.enc_shape, self.network_dim, self.alpha)
+            self.model = create_model(
+                self.game.enc_shape, self.network_dim, self.alpha)
         else:
             states = self.game.states
             for state in states:
@@ -57,26 +68,62 @@ class Critic:
         self.values[SAP] = prediction + adjustment
 
     def set_eligibility(self, SAP: tuple) -> None:
+        """Method for setting the eligibility value of 1 to the
+        current state-action pair. Here we do not use accumulative
+        eligibility traces, but rather the max variant
+
+        Args:
+            SAP (tuple): State-action pair
+        """
         self.eligibility_trace[SAP] = 1
 
     def update_eligibility(self, SAP: tuple) -> None:
+        """Updating the eligibility trace of the current 
+        state-action pair in a decaying manner
+
+        Args:
+            SAP (tuple): State-action pair
+        """
         self.eligibility_trace[SAP] = self.gamma * \
             self.lamb * self.eligibility_trace[SAP]
 
     def reset_eligibilities(self) -> None:
+        """Method for resetting all eligibility traces
+        when a new episode starts.
+        """
         states = self.game.states
         for state in states:
             actions = self.game.get_legal_actions(state)
             for action in actions:
                 SAP = (state, action)
                 self.eligibility_trace[SAP] = 0
-    
+
     def evaluate_state(self, state: np.ndarray) -> float:
+        """Generic method that takes in a state, and passes it
+        into a neural network such that the network can evaluate
+        the value of the state.
+
+        Args:
+            state (np.ndarray): (Encoding of) the state in question
+
+        Returns:
+            float: The predicted value of the state
+        """
         prediction = self.model(state)
-        assert prediction.shape == (1,) or prediction.shape == (1,1), "Prediction shapes wonky"
+        assert prediction.shape == (1,) or prediction.shape == (
+            1, 1), "Prediction shapes are weird"
         return tf.get_static_value(prediction[0][0])
-    
+
     def train(self, replay_memory: deque) -> None:
+        """Method for training the neural network with previously observed
+        data. We use a batch size of 128 where we randomly select 128
+        state and target pairs, and feed this into the neural network to train
+        on.
+
+        Args:
+            replay_memory (deque): List (queue) that contains a large number of previous examples.
+                                    We randomly select 128 items from this large memory
+        """
         batch_size = 128
         mini_batch = random.sample(replay_memory, batch_size)
         inputs = []
@@ -90,16 +137,5 @@ class Critic:
                 valid.append(target)
         inputs = np.array(inputs)
         valid = np.array(valid)
-        self.model.fit(inputs, valid, batch_size=batch_size, verbose=0, shuffle=True)
-            
-    
-
-
-def test_stuff():
-    critic = Critic()
-    critic.initialize()
-    print()
-
-
-if __name__ == "__main__":
-    test_stuff()
+        self.model.fit(inputs, valid, batch_size=batch_size,
+                       verbose=0, shuffle=True)

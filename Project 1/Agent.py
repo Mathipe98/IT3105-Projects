@@ -10,6 +10,8 @@ from gambler import Gambler
 from actor import Actor
 from critic import Critic
 
+import sys
+
 np.random.seed(123)
 
 
@@ -22,7 +24,27 @@ class Agent:
                  a_alpha: float, c_alpha: float, gamma: float, lamb: float,
                  epsilon_start: float, epsilon_finish: float, display: Any, frame_delay: float,
                  chosen_game: int,
-                 game: CartPoleGame) -> None:
+                 game: Any) -> None:
+        """Constructor for the overlooking RL Agent in the Actor-Critic paradigm. The Agent is the "middleman" between
+        the Actor and the Critic, and is the one telling them what to do at any given time.
+
+        Args:
+            n_episodes (int): Number of episodes for the agent to run the training for
+            max_steps (int): Max number of steps allowed before timing out
+            use_nn (bool): Whether to use a neural network critic
+            network_dim (Tuple): Dimensions of neural network if used
+            train_interval (int): The interval of episodes at which the network will be trained (every n steps)
+            a_alpha (float): Learning rate of the actor
+            c_alpha (float): Learning rate of the critic
+            gamma (float): Future reward discount rate (same for actor and critic)
+            lamb (float): Eligibility trace decay rate (same for actor and critic)
+            epsilon_start (float): The epsilon value to start with in the decayed-epsilon-greedy strategy
+            epsilon_finish (float): The epsilon
+            display (Any): Whether to display information about the learning process and the results
+            frame_delay (float): Delay between frames when displaying the run of a game (only relevant for Hanoi)
+            chosen_game (int): Number that corresponds to the chosen game (1-3). NB: ONLY RELEVANT FOR VISUALIZATION; is in no way used in the search algorithm
+            game (Any): Object corresponding to the chosen game. Is used in a generic and general way.
+        """
         self.n_episodes = n_episodes
         self.max_steps = max_steps
         self.use_nn, self.network_dim = use_nn, network_dim
@@ -68,6 +90,12 @@ class Agent:
         """
         replay_memory = deque(maxlen=50000)
 
+        if self.display:
+            progress = 0
+            progress_bar = "[          ]"
+            sys.stdout.write("\tProgress: %d%% " % (progress) + progress_bar + "   \r")
+            sys.stdout.flush()
+            next_progress = progress + int(self.n_episodes * 0.1)
         for episode in range(self.n_episodes):
             # At the start of every episode, we decay epsilon ever so slightly
             r = max((self.n_episodes - episode) / self.n_episodes, 0)
@@ -83,7 +111,6 @@ class Agent:
             self.starting_states[episode] = current_episode_start_params
             visited = []
             done = False
-            print(f"Episode number: {episode}")
             while not done:
                 current_episode_actions.append(current_action)
                 next_state, reward, done = self.game.step(current_action)
@@ -134,8 +161,34 @@ class Agent:
                     self.steps[episode] = current_steps
                     self.actions[episode] = current_episode_actions
                     break
+            if self.display:
+                progress = (episode + 1)
+                if progress == next_progress:
+                    percent = int((progress / self.n_episodes) * 100)
+                    index = int(percent / 10)
+                    pbar_list = list(progress_bar)
+                    pbar_list[index] = "="
+                    progress_bar = ''.join(pbar_list)
+                    sys.stdout.write("\tProgress: %d%% " % (percent) + progress_bar + "   \r")
+                    sys.stdout.flush()
+                    next_progress = progress + int(self.n_episodes * 0.1)
 
     def visualize(self) -> None:
+        """Method that visualizes the relevant information of each game.
+        This is the only place where we use the chosen_game variable, seeing
+        as the different games have different requirements for visualization.
+        Therefore I used this variable only as a simple way to distinguish what
+        to visualize.
+
+        Also note that the Towers of Hanoi is the only game that actually runs
+        a game; the other ones only produce plots (and print statements).
+
+        Games:
+            1 = Cartpole
+            2 = Hanoi
+            3 = Gambler
+        """
+        print("\n\n")
         if self.chosen_game == 1:
             self.visualize_steps()
             self.visualize_cartpole()
@@ -152,21 +205,6 @@ class Agent:
         plt.xlabel('N episodes')
         plt.ylabel("Steps")
         plt.show()
-
-    def visualize_hanoi(self) -> None:
-        """Specific method for visualizing the states of the Hanoi-game
-        """
-        best_episode = min(
-            self.actions, key=lambda key: len(self.actions[key]))
-        best_actions = self.actions[best_episode]
-        start = self.game.reset()
-        print("\n")
-        self.game.print_state(start)
-        for action in best_actions:
-            print("\n")
-            self.game.step(action)
-            next_state = self.game.current_state_parameters
-            self.game.print_state(next_state)
     
     def visualize_cartpole(self) -> None:
         """Specific method for visualizing the states of the Cartpole-game
@@ -185,19 +223,26 @@ class Agent:
         plt.show()
     
     def visualize_gambler(self) -> None:
+        self.actor.epsilon = 0
         states = self.game.states
         max_values = {}
         for state in states:
             if state == 0 or state == 100:
                 continue
             max_values[state] = self.actor.get_action(state)
-        print(max_values)
         plt.plot(list(max_values.values()))
         plt.xlabel("States")
         plt.ylabel("Action")
         plt.show()
     
     def run_game(self) -> None:
+        """Method for running through a game and producing/executing an action
+        for each encountered state.
+        Method is generic and works for all games, but really only makes sense to
+        use for the Hanoi game because it can actually print the states in a nice
+        way. In the other cases, it just prints the state parameters directly, which
+        isn't that nice to look at.
+        """
         current_state = self.game.reset()
         self.actor.epsilon = 0
         current_action = self.actor.get_action(current_state)
@@ -219,91 +264,3 @@ class Agent:
         else:
             print(self.game.current_state_parameters)
         print(f"Length of run: {steps}")
-
-def test_cartpole():
-    """blabla
-    """
-    global_config = {
-        "n_episodes": 300,
-        "max_steps": 300,
-        "use_nn": False,
-        "network_dim": (50,10,1),
-        "a_alpha": 0.1,
-        "c_alpha": 0.001,
-        "gamma": 0.9,
-        "lamb": 0.99,
-        "epsilon": 0.1,
-        "display": 0,
-        "frame_delay": 0,
-        "train_interval": 50,
-    }
-    cart_pole_config = {
-        "g": -9.81,
-        "m_c": 1,
-        "m_p": 0.1,
-        "l": 0.5,
-        "tau": 0.02,
-        "buckets": (4,4,8,8)
-    }
-    world = CartPoleGame(**cart_pole_config)
-    system = Agent(**global_config, game=world)
-    system.train()
-    system.visualize_steps()
-    system.visualize_cartpole()
-
-def test_hanoi() -> None:
-    global_config = {
-        "n_episodes": 200,
-        "max_steps": 100,
-        "use_nn": True,
-        "network_dim": (24,12,1),
-        "a_alpha": 0.1,
-        "c_alpha": 0.001,
-        "gamma": 0.9,
-        "lamb": 0.99,
-        "epsilon_start": 1,
-        "epsilon_finish": 0.0,
-        "display": 0,
-        "frame_delay": 0,
-        "train_interval": 5,
-    }
-    hanoi_config = {
-        "n_pegs": 3,
-        "n_discs": 4,
-    }
-    game = Hanoi(**hanoi_config)
-    system = Agent(**global_config, game=game)
-    system.train()
-    system.visualize_steps()
-
-    run_hanoi_game(system, game, 1)
-
-def test_gambler() -> None:
-    global_config = {
-        "n_episodes": 25000,
-        "max_steps": 100,
-        "use_nn": False,
-        "network_dim": (24,12,1),
-        "a_alpha": 0.1,
-        "c_alpha": 0.1,
-        "gamma": 0.9,
-        "lamb": 0.99,
-        "epsilon": 0.1,
-        "display": 0,
-        "frame_delay": 0,
-        "train_interval": 50,
-    }
-    gambler_params = {
-        "p_win": 0.4,
-        "goal_cash": 100,
-    }
-    gambler = Gambler(**gambler_params)
-    agent = Agent(**global_config, game=gambler)
-    agent.train()
-    agent.visualize_gambler()
-
-if __name__ == '__main__':
-    test_hanoi()
-    # test_cartpole()
-    # test_gambler()
-    pass

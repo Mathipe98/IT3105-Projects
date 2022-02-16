@@ -11,6 +11,8 @@ import os
 import pathlib
 os.chdir(pathlib.Path(__file__).parent.resolve())
 
+import numpy as np
+np.random.seed(123)
 
 def parse_config() -> Tuple[Dict, Dict, Dict, Dict, int]:
     """Function that will parse a local configuration file in order to easily setup
@@ -85,6 +87,8 @@ def verify_configs(global_config: Dict, cartpole_config: Dict, hanoi_config: Dic
 
 def setup_agent() -> Agent:
     global_config, cartpole_config, hanoi_config, gambler_config = parse_config()
+    if global_config["display"]:
+        print(f"Generating game states..\n")
     chosen_game = global_config["chosen_game"]
     if chosen_game == 1:
         game = CartPoleGame(**cartpole_config)
@@ -98,6 +102,7 @@ def setup_agent() -> Agent:
 
 def start() -> None:
     agent = setup_agent()
+    print(f"Starting training.\n")
     agent.train()
     if agent.display:
         agent.visualize()
