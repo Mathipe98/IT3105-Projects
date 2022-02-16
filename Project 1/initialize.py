@@ -25,7 +25,6 @@ def parse_config() -> Tuple[Dict, Dict, Dict, Dict, int]:
     cartpole_config = {}
     hanoi_config = {}
     gambler_config = {}
-    chosen_game = None
     for section in config.sections():
         if section == "GLOBALS":
             global_config["n_episodes"] = int(
@@ -101,8 +100,7 @@ def start() -> None:
     agent = setup_agent()
     agent.train()
     if agent.display:
-        agent.visualize_steps()
-        agent.run_game()
+        agent.visualize()
 
 
 if __name__ == '__main__':

@@ -15,7 +15,7 @@ class CartPoleGame():
                  l: float = 0.5, tau: float = 0.02, buckets: List = None) -> None:
         # Set variables for this particular game
         if buckets is None:
-            buckets = (4, 4, 16, 8)
+            buckets = (4, 4, 8, 8)
         self.g, self.m_c, self.m_p, self.l, self.tau = g, m_c, m_p, l, tau
         self.buckets = buckets
         # Create vectors for positions and velocities (and their derivatives) with length equal to the total number of steps

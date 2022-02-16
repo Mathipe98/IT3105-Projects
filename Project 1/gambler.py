@@ -14,11 +14,13 @@ class Gambler:
         self.states = None
         self.current_state = None
         self.current_state_parameters = None
+        self.enc_shape = None
         self.initialize()
     
     def initialize(self) -> None:
         self.generate_all_states()
         self.reset()
+        self.enc_shape = (1,)
 
     def reset(self) -> None:
         self.current_state = np.random.randint(1, self.goal_cash-1)
@@ -39,10 +41,10 @@ class Gambler:
         return next_state, reward, done
 
     def encode_state(self, state: int) -> np.ndarray:
-        pass
+        return np.array([state])
 
     def decode_state(self, encoded_state: np.ndarray) -> int:
-        pass
+        return encoded_state[0]
 
     def get_legal_actions(self, state: int) -> List:
         # Workaround for calculating next_action in training; when we have 0 or max money, there is no next

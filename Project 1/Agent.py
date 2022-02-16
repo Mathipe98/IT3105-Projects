@@ -135,6 +135,16 @@ class Agent:
                     self.actions[episode] = current_episode_actions
                     break
 
+    def visualize(self) -> None:
+        if self.chosen_game == 1:
+            self.visualize_steps()
+            self.visualize_cartpole()
+        elif self.chosen_game == 2:
+            self.visualize_steps()
+            self.run_game()
+        else:
+            self.visualize_gambler()
+
     def visualize_steps(self) -> None:
         """Simple method for generating a plot with number of steps as a function of number of episodes
         """
@@ -157,7 +167,36 @@ class Agent:
             self.game.step(action)
             next_state = self.game.current_state_parameters
             self.game.print_state(next_state)
-
+    
+    def visualize_cartpole(self) -> None:
+        """Specific method for visualizing the states of the Cartpole-game
+        """
+        best_episode = max(self.actions, key=lambda key: len(self.actions[key]))
+        best_actions = self.actions[best_episode]
+        self.game.reset()
+        self.game.current_state_parameters = self.starting_states[best_episode]
+        angles = [self.game.current_state_parameters[2]]
+        for action in best_actions:
+            self.game.step(action)
+            angles.append(self.game.current_state_parameters[2])
+        plt.plot(angles)
+        plt.xlabel("N steps")
+        plt.ylabel("Angle (radians)")
+        plt.show()
+    
+    def visualize_gambler(self) -> None:
+        states = self.game.states
+        max_values = {}
+        for state in states:
+            if state == 0 or state == 100:
+                continue
+            max_values[state] = self.actor.get_action(state)
+        print(max_values)
+        plt.plot(list(max_values.values()))
+        plt.xlabel("States")
+        plt.ylabel("Action")
+        plt.show()
+    
     def run_game(self) -> None:
         current_state = self.game.reset()
         self.actor.epsilon = 0
@@ -180,54 +219,6 @@ class Agent:
         else:
             print(self.game.current_state_parameters)
         print(f"Length of run: {steps}")
-    
-    def visualize_cartpole(self) -> None:
-        """Specific method for visualizing the states of the Cartpole-game
-        """
-        best_episode = max(self.actions, key=lambda key: len(self.actions[key]))
-        best_actions = self.actions[best_episode]
-        self.game.reset()
-        self.game.current_state_parameters = self.starting_states[best_episode]
-        angles = [self.game.current_state_parameters[2]]
-        for action in best_actions:
-            self.game.step(action)
-            angles.append(self.game.current_state_parameters[2])
-        plt.plot(angles)
-        plt.xlabel("N steps")
-        plt.ylabel("Angle (radians)")
-        plt.show()
-    
-    def visualize_gambler(self) -> None:
-        states = self.game.states
-        critic_values = self.critic.values
-        max_values = {}
-        for state in states:
-            if state == 0 or state == 100:
-                continue
-            actions = self.game.get_legal_actions(state)
-            possible_SAPs = {(state, action): critic_values[(state, action)] for action in actions}
-            max_action = max(possible_SAPs, key=possible_SAPs.get)[1]
-            max_values[state] = max_action
-        plt.plot(list(max_values.values()))
-        plt.xlabel("States")
-        plt.ylabel("Action")
-        plt.show()
-
-
-def run_hanoi_game(agent: Agent, game: Hanoi, delay: float) -> None:
-    current_state = game.reset()
-    agent.actor.epsilon = 0
-    current_action = agent.actor.get_action(current_state)
-    done = False
-    while not done:
-        next_state, _, done = game.step(current_action)
-        next_action = agent.actor.get_action(next_state)
-        game.print_state(current_state)
-        time.sleep(delay)
-        current_state = next_state
-        current_action = next_action
-    game.print_state(next_state)
-
 
 def test_cartpole():
     """blabla

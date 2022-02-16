@@ -5,24 +5,24 @@ CompressionLevel = 9
 ForwardX11 = yes
 
 [GLOBALS]
-n_episodes = 500
-max_steps = 300
-use_nn = False
+n_episodes = 1000
+max_steps = 100
+use_nn = True
 network_dim = (100,50,1)
 train_interval = 20
 a_alpha = 0.1
-c_alpha = 0.1
+c_alpha = 0.0001
 gamma = 0.9
 lamb = 0.99
-epsilon_start = 0.0
+epsilon_start = 0.7
 epsilon_finish = 0.0
 display = True
 frame_delay = 1
-chosen_game = 3
+chosen_game = 2
 
 [CARTPOLE]
 l = 0.1
-m_p = 0.1
+m_p = 0.5
 g = -9.81
 tau = 0.02
 
