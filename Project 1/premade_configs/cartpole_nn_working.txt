@@ -5,7 +5,7 @@ CompressionLevel = 9
 ForwardX11 = yes
 
 [GLOBALS]
-n_episodes = 150
+n_episodes = 200
 max_steps = 300
 use_nn = True
 network_dim = (100,50,1)

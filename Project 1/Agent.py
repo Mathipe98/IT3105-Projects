@@ -223,6 +223,8 @@ class Agent:
         plt.show()
     
     def visualize_gambler(self) -> None:
+        """Specific method for visualizing the states of the Gambler-game
+        """
         self.actor.epsilon = 0
         states = self.game.states
         max_values = {}
