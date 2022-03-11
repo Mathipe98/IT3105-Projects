@@ -1,3 +1,4 @@
+from typing import Tuple
 import numpy as np
 
 class Nim:
@@ -18,21 +19,34 @@ class Nim:
     def get_legal_actions(self, state: np.ndarray) -> np.ndarray:
         return np.arange(1, min(self.k+1, state[0]+1))
     
-    def step(self, action: int) -> np.ndarray:
+    def step(self, action: int) -> Tuple[np.ndarray, int, bool]:
         if action > self.n:
             raise ValueError(f"Cannot remove {action} items from a pile of size {self.n}")
-        return np.array([self.n - action])
+        self.n = self.n - action
+        next_state = np.array([self.n])
+        if self.is_winning(next_state):
+            reward = 1
+            done = True
+        else:
+            reward = 0
+            done = False
+        self.current_state = next_state
+        return self.current_state, reward, done
     
     def is_winning(self, state: np.ndarray) -> bool:
-        return state[0] <= self.k
+        return state[0] == 0
+    
+    # def is_losing(self, state: np.ndarray) -> bool:
+    #     return state[0] == 0
 
     
 if __name__ == "__main__":
     test = Nim()
     state = test.reset()
-    print(state)
-    actions = test.get_legal_actions(state)
-    print(actions)
-    a1 = actions[2]
-    new_state = test.step(a1)
-    print(new_state)
+    done = test.is_winning(state) or test.is_losing(state)
+    while not done:
+        print(state)
+        actions = test.get_legal_actions(state)
+        action = actions[0]
+        print(action)
+        state, reward, done = test.step(action)
