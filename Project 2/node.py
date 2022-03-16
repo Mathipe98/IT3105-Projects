@@ -1,12 +1,13 @@
-from sre_parse import State
+from typing import List
 import numpy as np
 
 
 class Node:
 
-    def __init__(self, state, parent=None, a_parent=None) -> None:
-        self.state = State
+    def __init__(self, state, parent=None, parent_action=None) -> None:
+        self.state = state
         self.parent = parent
-        self.a_parent = a_parent
-        self.children = []
-        self.n_visits = 0
+        self.parent_action = parent_action
+        self.children: List[Node] = []
+        self.visited = False
+        self.value = 0
