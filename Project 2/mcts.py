@@ -48,18 +48,14 @@ class MCTSAgent:
         copy_game = copy.copy(self.game)
         for i in range(self.M):
             # Assume for now that best_action in game.get_legal_actions(current_node.state) == True
-            if self.is_leaf_node(current_node):
+            if current_node.is_leaf_node():
                 # If we're at a leaf node, then check whether or not we've visited it
                 if not current_node.visited:
                     # If we have, then we do rollout immediately
                     self.rollout(current_node)
                 else:
                     # If not visited, then we first generate all children nodes of current node
-                    all_possible_actions = self.game.get_legal_actions(current_node.state)
-                    for action in all_possible_actions:
-                        new_state = self.game.simulate_action(action, current_node.state)
-                        child_node = Node(state=new_state, parent=current_node, parent_action=action)
-                        current_node.children.append(child_node)
+                    child_nodes = current_node.generate_children()
                     # Now that all children are generated, we need to find the best action to take
                     action_distribution = self.model(current_node.state).numpy()
                     best_action = np.argmax(action_distribution)
