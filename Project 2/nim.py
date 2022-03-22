@@ -8,16 +8,18 @@ class Nim:
     def __init__(self, n: int=10, k: int=3) -> None:
         self.n = n
         self.k = k
-        self.current_state = np.array([self.n])
-        self.current_node = Node(game=0, state=self.current_state)
-        self.current_node.visits = 1
+        self.current_state = None
+        self.current_node = None
 
     def reset(self) -> Node:
         self.k = self.k
         self.current_state = np.array([self.n])
-        self.current_node = Node(game=0, state=self.current_state)
+        self.current_node = Node(game=self, state=self.current_state)
         self.current_node.visits = 1
         return self.current_node
+    
+    def get_n_possible_actions(self) -> int:
+        return self.k
     
     def get_legal_actions(self, node: Node) -> np.ndarray:
         state = node.state
@@ -28,9 +30,12 @@ class Nim:
             raise ValueError(f"Cannot remove {action} items from a pile of size {self.n}")
         next_state = self.current_state - action
         self.current_state = next_state
-        next_node = Node(game=0, state=next_state, parent=self.current_node, parent_action=action)
+        next_node = Node(game=self, state=next_state, parent=self.current_node, parent_action=action)
         if self.is_winning(next_node):
             reward = 1
+            done = True
+        elif self.is_losing(next_node):
+            reward = -1
             done = True
         else:
             reward = 0
@@ -45,10 +50,28 @@ class Nim:
         return self_copy.step(action)
     
     def is_winning(self, node: Node) -> bool:
+        return node.state[0] <= self.k
+    
+    def is_losing(self, node: Node) -> bool:
         return node.state[0] == 0
     
-    # def is_losing(self, state: np.ndarray) -> bool:
-    #     return state[0] == 0
+    def encode_state(self, node: Node, player: int) -> np.ndarray:
+        """Method to one-hot encode the state of the Nim-game.
+        This includes the player number.
+
+        Args:
+            node (Node): Node corresponding to current state
+            player (int): Integer describing either first or second player
+
+        Returns:
+            np.ndarray: One-hot encoding of the state + player
+        """
+        state = node.state
+        encoded_state = np.zeros(self.n + 1)
+        index = state[0] - 1
+        encoded_state[index] = 1
+        encoded_state[-1] = player
+        return encoded_state
 
     
 if __name__ == "__main__":
