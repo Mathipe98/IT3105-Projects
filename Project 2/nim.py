@@ -1,6 +1,6 @@
 import numpy as np
 import copy
-from typing import Tuple
+from typing import List, Tuple
 from node import Node
 
 class Nim:
@@ -8,46 +8,36 @@ class Nim:
     def __init__(self, n: int=10, k: int=3) -> None:
         self.n = n
         self.k = k
-        self.current_state = None
         self.current_node = None
 
-    def reset(self) -> Node:
+    def reset(self, player) -> Node:
         self.k = self.k
-        self.current_state = np.array([self.n])
-        self.current_node = Node(game=self, state=self.current_state)
+        max_player = True if player == 1 else False
+        self.current_node = Node(state=np.array([self.n]), max_player=max_player)
         self.current_node.visits = 1
         return self.current_node
     
-    def get_n_possible_actions(self) -> int:
+    def get_action_space(self) -> int:
         return self.k
     
-    def get_legal_actions(self, node: Node) -> np.ndarray:
-        state = node.state
-        return np.arange(1, min(self.k+1, state[0]+1))
+    def get_legal_actions(self, node: Node) -> List:
+        return [i for i in range(1, min(self.k+1, node.state[0]+1))]
     
-    def step(self, action: int) -> Tuple[Node, int, bool]:
-        if action > self.current_state[0]:
-            raise ValueError(f"Cannot remove {action} items from a pile of size {self.n}")
-        next_state = self.current_state - action
-        self.current_state = next_state
-        next_node = Node(game=self, state=next_state, parent=self.current_node, parent_action=action)
-        if self.is_winning(next_node):
-            reward = 10
-            done = True
-        elif self.is_losing(next_node):
-            reward = -5
-            done = True
-        else:
-            reward = 0
-            done = False
-        self.current_node = next_node
-        return self.current_node, reward, done
-    
-    def simulate_action(self, action: int, node: Node) -> Tuple[Node, int, bool]:
-        self_copy = copy.copy(self)
-        self_copy.current_node = node
-        self_copy.current_state = node.state
-        return self_copy.step(action)
+    def perform_action(self, root_node: Node, action: int) -> Node:
+        # If the root node has a child with the action present, then return that child
+        child = next((c for c in root_node.children if c.incoming_edge == action), None)
+        if child is not None:
+            return child
+        # Get the next state
+        next_state = root_node.state - action
+        # Now create a node with the opposite "parity"
+        next_node = Node(
+            state=next_state,
+            parent=root_node,
+            incoming_edge=action,
+            max_player=not root_node.max_player
+        )
+        return next_node
     
     def is_winning(self, node: Node) -> bool:
         return node.state[0] <= self.k
@@ -55,14 +45,7 @@ class Nim:
     def is_losing(self, node: Node) -> bool:
         return node.state[0] == 0
     
-    def evaluate_state(self, node: Node) -> int:
-        if self.is_winning(node):
-            return 10
-        elif self.is_losing(node):
-            return -5
-        return 0
-    
-    def encode_state(self, node: Node, player: int) -> np.ndarray:
+    def encode_node(self, node: Node) -> np.ndarray:
         """Method to one-hot encode the state of the Nim-game.
         This includes the player number.
 
@@ -73,6 +56,7 @@ class Nim:
         Returns:
             np.ndarray: One-hot encoding of the state + player
         """
+        player = 1 if node.max_player else -1
         state = node.state
         encoded_state = np.zeros(self.n + 1)
         index = state[0] - 1
@@ -83,18 +67,3 @@ class Nim:
     
 if __name__ == "__main__":
     test = Nim()
-    print(test.current_state)
-    node = test.reset()
-    actions = test.get_legal_actions(node)
-    print(actions)
-    done = False
-    while not done:
-        action = np.random.choice(actions)
-        node, reward, done = test.step(action)
-        print(f"Action taken: {action}")
-        print(node.state)
-        actions = test.get_legal_actions(node)
-    node = test.reset()
-    simulated_node, reward, done = test.simulate_action(2, node)
-    print(f"Simulated node state: {simulated_node.state}")
-    print(f"Actual node state: {node.state}")

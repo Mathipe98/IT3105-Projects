@@ -6,19 +6,24 @@ import numpy as np
 class Node:
 
     def __init__(self,
-                game,
                 state,
                 parent: Node=None,
-                parent_action=None) -> None:
-        self.game = game
+                incoming_edge: int=None,
+                # REMEMBER TO SET MAX PLAYER
+                max_player: bool=True,
+                leaf: bool=True) -> None:
+        # Values from instantiation
         self.state = state
         self.parent = parent
-        self.parent_action = parent_action
+        self.incoming_edge = incoming_edge
+        self.max_player = max_player
+        self.leaf = leaf
+
+        # Default values
         self.children: List[Node] = []
         self.visits = 0
         self.value = 0
-        self.c = 2
-        self.ucb1 = np.inf
+        self.final = None
     
     def get_ucb1(self, max_player: bool) -> float:
         """This method calculated the upper confidence bound value of a node,
@@ -34,36 +39,22 @@ class Node:
         """
         if self.visits == 0:
             return np.inf
+        c = 2
         avg_val = self.value / self.visits
         parent_visits = self.parent.visits
         root = np.sqrt(np.log(parent_visits) / self.visits)
         if max_player:
-            self.ucb1 = avg_val + self.c * root
+            ucb1 = avg_val + c * root
         else:
-            self.ucb1 = avg_val - self.c * root
-        return self.ucb1
+            ucb1 = avg_val - c * root
+        return ucb1
     
-    def get_reward(self) -> int:
-        return self.game.evaluate_state(self)
-    
-    def is_leaf_node(self) -> bool:
+    def is_leaf(self) -> bool:
         return len(self.children) == 0
-    
-    def is_final(self) -> bool:
-        return self.game.is_winning(self) or self.game.is_losing(self)
-
-    def generate_children(self) -> List[Node]:
-        possible_actions = self.game.get_legal_actions(self)
-        if self.children is not None and len(possible_actions) == len(self.children):
-            return self.children
-        for action in possible_actions:
-            child_node, _, _ = self.game.simulate_action(action, self)
-            self.children.append(child_node)
-        assert all(child.parent == self for child in self.children), "Generated child nodes do not have correct parent"
-        return self.children
     
     def __repr__(self) -> str:
         return self.__str__()
 
     def __str__(self) -> str:
-        return f"State: {self.state}. Val: {self.val}. Visits: {self.visits}."
+        return f"\nState: {self.state}\nVal: {self.value}\nVisits: {self.visits} \
+            \nParent state: {self.parent.state}\nIncoming edge: {self.incoming_edge}\n"

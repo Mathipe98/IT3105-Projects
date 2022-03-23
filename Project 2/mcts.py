@@ -36,14 +36,14 @@ class MCTSAgent:
             while not root_node.is_final():
                 self.tree_search(root_node, max_player)
                 # At this point, the node visit counts should be updated
-                target = np.zeros(self.game.get_n_possible_actions())
+                target = np.zeros(self.game.get_action_space())
                 child_visits = [child.visits for child in root_node.children]
                 norm_factor = 1.0/sum(child_visits)
-                parent_actions = [child.parent_action for child in root_node.children]
+                parent_actions = [child.incoming_edge for child in root_node.children]
                 for value, action in zip(child_visits, parent_actions):
                     action_index = action - 1
                     target[action_index] = value * norm_factor
-                network_input = self.game.encode_state(root_node, self.starting_player)
+                network_input = self.game.encode_node(root_node, self.starting_player)
                 target_tuple = (network_input, target)
                 replay_buffer.append(target_tuple)
                 best_action = np.argmax(target) + 1
@@ -106,7 +106,7 @@ class MCTSAgent:
         for i in range(self.search_games):
             current_node = root_node
             while True:
-                if current_node.is_leaf_node():
+                if current_node.is_leaf():
                     # If leaf node, then check if we've visited before
                     if current_node.visits == 0 or current_node.is_final():
                         # If we have not, then perform rollout
