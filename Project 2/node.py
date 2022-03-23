@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ctypes import Union
 from typing import List
 import numpy as np
 
@@ -42,11 +43,14 @@ class Node:
             self.ucb1 = avg_val - self.c * root
         return self.ucb1
     
+    def get_reward(self) -> int:
+        return self.game.evaluate_state(self)
+    
     def is_leaf_node(self) -> bool:
         return len(self.children) == 0
     
     def is_final(self) -> bool:
-        return self.game.is_winning(self)
+        return self.game.is_winning(self) or self.game.is_losing(self)
 
     def generate_children(self) -> List[Node]:
         possible_actions = self.game.get_legal_actions(self)
@@ -57,3 +61,9 @@ class Node:
             self.children.append(child_node)
         assert all(child.parent == self for child in self.children), "Generated child nodes do not have correct parent"
         return self.children
+    
+    def __repr__(self) -> str:
+        return self.__str__()
+
+    def __str__(self) -> str:
+        return f"State: {self.state}. Val: {self.val}. Visits: {self.visits}."

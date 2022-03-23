@@ -32,10 +32,10 @@ class Nim:
         self.current_state = next_state
         next_node = Node(game=self, state=next_state, parent=self.current_node, parent_action=action)
         if self.is_winning(next_node):
-            reward = 1
+            reward = 10
             done = True
         elif self.is_losing(next_node):
-            reward = -1
+            reward = -5
             done = True
         else:
             reward = 0
@@ -54,6 +54,13 @@ class Nim:
     
     def is_losing(self, node: Node) -> bool:
         return node.state[0] == 0
+    
+    def evaluate_state(self, node: Node) -> int:
+        if self.is_winning(node):
+            return 10
+        elif self.is_losing(node):
+            return -5
+        return 0
     
     def encode_state(self, node: Node, player: int) -> np.ndarray:
         """Method to one-hot encode the state of the Nim-game.
