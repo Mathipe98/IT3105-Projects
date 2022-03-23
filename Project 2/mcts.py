@@ -30,7 +30,8 @@ class MCTSAgent:
         p1_win = 0
         p2_win = 0
         for _ in range(self.episodes):
-            max_player = True if self.starting_player == 1 else False
+            actual_player = True if self.starting_player == 1 else False
+            max_player = True if actual_player else False
             root_node = self.game.reset()
             while not root_node.is_final():
                 self.tree_search(root_node, max_player)
@@ -61,20 +62,27 @@ class MCTSAgent:
         done = leaf_node.is_final()
         rollout_max_player = True if max_player else False
         reward = None
+        original_node_state = current_node.state
+        actions = []
+        n_actions = 0
         while not done:
             legal_actions = self.game.get_legal_actions(current_node)
             action = np.random.choice(legal_actions)
             # We now simulate the taken action. This means flipping the state of the minmax player
             current_node, reward, done = self.game.simulate_action(action, current_node)
+            actions.append(action)
+            n_actions += 1
             rollout_max_player = not rollout_max_player
         if done:
+            # print(f"Original state: {original_node_state}\nOriginal max player: {max_player}")
+            # print(f"Actions done in rollout: {actions}")
             # If the player that ended up in a final state is not maximizing, then
             # we make sure that the reward sign is flipped
             if reward is None:
-                reward = current_node.get_reward()
+                reward = current_node.value
             if not rollout_max_player:
                 reward *= -1
-            print(reward)
+            #print(reward)
             self.backprop(leaf_node, reward)
 
     def backprop(self, leaf_node: Node, value: int) -> None:
@@ -95,7 +103,7 @@ class MCTSAgent:
                 break
         
     def tree_search(self, root_node: Node, max_player: bool) -> None:
-        for _ in range(self.search_games):
+        for i in range(self.search_games):
             current_node = root_node
             while True:
                 if current_node.is_leaf_node():
@@ -109,29 +117,19 @@ class MCTSAgent:
                         # (in the future, use NN for choosing action)
                         current_node.generate_children()
                         random_child = np.random.choice(current_node.children)
-                        self.rollout(random_child, max_player)
+                        self.rollout(random_child, not max_player)
                         break
-                # If we're not at a leaf node, then extract the children and choose the one
-                # that maximizes (or minimizes) UCB1
-                children = current_node.children
-                if max_player:
-                    current_node = max(children, key=lambda n: n.get_ucb1(max_player=True))
                 else:
-                    current_node = min(children, key=lambda n: n.get_ucb1(max_player=False))
-    
-    def tree_recursion(self, root_node: Node, max_player: bool) -> None:
-        # NOTE: LEAF NODE VISITS TRIGGERS FOR NEW NODE; DOESNT UPDATE IN ROLLOUT/BACKPROP
-        # Basically: some error regarding visit-updates in backprop (probably)
-        if root_node.visits <= 0 or root_node.is_final():
-            return self.rollout(root_node, max_player)
-        children = root_node.children
-        if len(children) == 0:
-            children = root_node.generate_children()
-        if max_player:
-            root_node = max(children, key=lambda n: n.get_ucb1(max_player=True))
-        else:
-            root_node = min(children, key=lambda n: n.get_ucb1(max_player=False))
-        return self.tree_recursion(root_node, not max_player)
+                    # If we're not at a leaf node, then extract the children and choose the one
+                    # that maximizes (or minimizes) UCB1
+                    children = current_node.children
+                    if max_player:
+                        debug = [child.get_ucb1(max_player) for child in children]
+                        current_node = max(children, key=lambda n: n.get_ucb1(max_player=True))
+                        a = 0
+                    else:
+                        current_node = min(children, key=lambda n: n.get_ucb1(max_player=False))
+                    max_player = not max_player
 
 if __name__ == "__main__":
     test_game = Nim(n=10, k=3)
