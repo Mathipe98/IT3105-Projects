@@ -133,5 +133,5 @@ class MCTSAgent:
 
 if __name__ == "__main__":
     test_game = Nim(n=10, k=3)
-    agent = MCTSAgent(game=test_game, search_games=1000, episodes=100, player=1)
+    agent = MCTSAgent(game=test_game, search_games=100, episodes=100, player=1)
     agent.train()
