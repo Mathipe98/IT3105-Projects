@@ -23,7 +23,7 @@ class Nim:
     def get_legal_actions(self, node: Node) -> List:
         return [i for i in range(1, min(self.k+1, node.state[0]+1))]
     
-    def perform_action(self, root_node: Node, action: int) -> Node:
+    def perform_action(self, root_node: Node, action: int, keep_children: bool=False) -> Node:
         # If the root node has a child with the action present, then return that child
         child = next((c for c in root_node.children if c.incoming_edge == action), None)
         if child is not None:
@@ -37,6 +37,8 @@ class Nim:
             incoming_edge=action,
             max_player=not root_node.max_player
         )
+        if keep_children:
+            root_node.children.append(next_node)
         return next_node
     
     def is_winning(self, node: Node) -> bool:

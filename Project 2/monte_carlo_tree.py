@@ -9,16 +9,15 @@ np.random.seed(123)
 
 class MonteCarloTree:
 
-    def __init__(self, root_node: Node, game: Game) -> None:
+    def __init__(self, root_node: Node, game: Game, keep_children: bool=False) -> None:
         self.root_node = root_node
         self.game = game
+        self.keep_children = keep_children
     
     def traverse(self) -> None:
         root = self.root_node
         while True:
             if root.leaf:
-                # If we encounter a leaf node, then flip the value since we've now dealt with it
-                root.leaf = False
                 if root.final or root.visits == 0:
                     self.rollout(root)
                     break
@@ -47,7 +46,6 @@ class MonteCarloTree:
             reward, done = self.game.evaluate(node)
             if done:
                 node.final = True
-                node.leaf = True
                 node.value = reward
                 node.visits += 1
                 self.backprop(node)
@@ -56,7 +54,7 @@ class MonteCarloTree:
             if actions is None or len(actions) == 0:
                 raise RuntimeError("ERROR: get actions in rollout returned nothing; probably called on terminal state")
             random_action = np.random.choice(actions)
-            node = self.game.perform_action(root_node=node, action=random_action)
+            node = self.game.perform_action(root_node=node, action=random_action, keep_children=self.keep_children)
 
     def backprop(self, node: Node) -> None:
         value = node.value
@@ -87,7 +85,7 @@ class MonteCarloTree:
         """
         c = 2
         children = node.children
-        if children is None:
+        if children is None or len(children) == 0:
             raise RuntimeError("Called get_child when node has no children.")
         child_ucb_vals = []
         for child in children:
@@ -117,6 +115,8 @@ class MonteCarloTree:
             assert child_node.parent==node and child_node.incoming_edge==action, "Action performed did not properly update logic"
             node.children.append(child_node)
         assert all(c.parent==node for c in node.children), "Children update incorrectly"
+        # Since we've expanded a node, it's no longer a leaf node
+        node.leaf = False
 
 if __name__ == "__main__":
     game = Game(game_implementation=Nim(), player=1)
@@ -132,4 +132,4 @@ if __name__ == "__main__":
     # print(child)
     node = game.reset()
     mtree = MonteCarloTree(root_node=node, game=game)
-    mtree.traverse()
+    

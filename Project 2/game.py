@@ -13,8 +13,8 @@ class Game:
     def reset(self) -> Node:
         return self.game_implementation.reset(self.player)
     
-    def perform_action(self, root_node: Node, action: int) -> Node:
-        return self.game_implementation.perform_action(root_node, action)
+    def perform_action(self, root_node: Node, action: int, keep_children: bool=False) -> Node:
+        return self.game_implementation.perform_action(root_node, action, keep_children)
 
     def get_action_space(self) -> int:
         return self.game_implementation.get_action_space()
