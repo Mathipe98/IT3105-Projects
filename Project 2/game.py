@@ -31,6 +31,9 @@ class Game:
         elif self.game_implementation.is_losing(node):
             reward = -1
             done = True
+        # If minimizing player, then flip the reward sign
+        if not node.max_player:
+            reward *= -1
         return reward, done
     
     def encode_node(self, node: Node) -> np.ndarray:
