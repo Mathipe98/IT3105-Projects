@@ -24,7 +24,7 @@ def create_model(n_input: int, hidden_layers: tuple, hl_activations: List, n_out
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
     else:
         raise ValueError(f'Invalid optimizer argument: {optimizer}')
-    model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+    model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
     return model
 
 

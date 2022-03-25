@@ -42,9 +42,9 @@ class MCTSAgent:
         )
 
     def train(self):
-        replay_buffer = deque(maxlen=100000)
-        p1_win = 0
-        p2_win = 0
+        replay_buffer = deque(maxlen=10000)
+        p1_wins = 0
+        p2_wins = 0
         for e in range(self.episodes):
             print(f"Episode: {e}")
             root_node = self.game.reset()
@@ -72,31 +72,45 @@ class MCTSAgent:
                 next_node = self.game.perform_action(root_node, best_action)
                 root_node = next_node
             if root_node.max_player:
-                p1_win += 1
+                p1_wins += 1
             else:
-                p2_win += 1
-            if len(replay_buffer) > 200:
-                minibatch = random.sample(replay_buffer, 200)
+                p2_wins += 1
+            if len(replay_buffer) > 1000:
+                minibatch = random.sample(replay_buffer, 1000)
                 inputs = np.array([tup[0] for tup in minibatch])
                 targets = np.array([tup[1] for tup in minibatch])
-                self.model.fit(x=inputs, y=targets, epochs=1, verbose=1)
-        print(f"Stats:\nP1\t{p1_win}\nP2\t{p2_win}")
+                self.model.fit(x=inputs, y=targets, epochs=1, verbose=0)
+        print(f"Training stats:\nP1\t{p1_wins}\nP2\t{p2_wins}")
     
     def play(self) -> None:
-        start_node = self.game.reset()
-        encoded = self.game.encode_node(start_node)
-        action_probs = self.model(encoded).numpy()
-        print(action_probs)
+        p1_wins = 0
+        p2_wins = 0
+        for _ in range(10):
+            node = self.game.reset()
+            _, done = self.game.evaluate(node)
+            while not done:
+                encoded = self.game.encode_node(node)
+                encoded = encoded.reshape(1, -1)
+                action_probs = self.model(encoded).numpy()
+                action = np.argmax(action_probs, axis=1)[0] + 1
+                next_node = self.game.perform_action(root_node=node, action=action)
+                node = next_node
+                _, done = self.game.evaluate(node)
+            if node.max_player:
+                p1_wins += 1
+            else:
+                p2_wins +=1
+        print(f"NN playing stats:\nP1\t{p1_wins}\nP2\t{p2_wins}")
 
 
 
 if __name__ == "__main__":
-    game = Game(game_implementation=Nim(), player=1)
-    agent = MCTSAgent(game=game, n_sims=1000, episodes=100)
+    game = Game(game_implementation=Nim(), player=2)
+    agent = MCTSAgent(game=game, n_sims=100, episodes=500)
     model_params = {
-        "hidden_layers": (15, 10, 5),
-        "hl_activations": ('relu', 'relu', 'relu'),
-        "output_activation": 'sigmoid',
+        "hidden_layers": (100, 50, 25),
+        "hl_activations": ('relu', 'relu', 'sigmoid'),
+        "output_activation": 'softmax',
         "optimizer": 'Adam',
         "lr": 0.01,
     }
