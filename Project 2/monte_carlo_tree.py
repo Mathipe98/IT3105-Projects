@@ -1,7 +1,6 @@
 import numpy as np
 
 from game import Game
-from nim import Nim
 from node import Node
 
 np.random.seed(123)
@@ -15,6 +14,11 @@ class MonteCarloTree:
         self.keep_children = keep_children
     
     def traverse(self) -> None:
+        """This method implements the tree traversal part of
+        MCTS. It starts with the trees own root node, and 
+        iterates in a loop until it finds a leaf node to either
+        rollout or expand.
+        """
         root = self.root_node
         while True:
             if root.leaf:
@@ -31,16 +35,16 @@ class MonteCarloTree:
                 root = next_root
 
     def rollout(self, node: Node) -> None:
-        """
-        While True:
-            reward, done = self.game.evaluate(node)
-            if done:
-                return reward
-            action = np.random.choice(self.game.get_actions(node))
-            node = self.game.perform_action(action)
+        """This method performs the rollout in Monte-Carlo
+        Tree Search. It takes a leaf node, and chooses either
+        random actions or actions determined by a neural network,
+        and performs them until a terminal state is reached.
 
         Args:
-            node (Node): _description_
+            node (Node): Leaf node with which to start rolling out
+
+        Raises:
+            RuntimeError: Error in case rollout is called on a terminal state
         """
         while True:
             reward, done = self.game.evaluate(node)
@@ -57,6 +61,12 @@ class MonteCarloTree:
             node = self.game.perform_action(root_node=node, action=random_action, keep_children=self.keep_children)
 
     def backprop(self, node: Node) -> None:
+        """This method takes the value of a terminal node,
+        and backpropagates these values up through the tree.
+
+        Args:
+            node (Node): Terminal node whose value will backpropagate
+        """
         value = node.value
         while True:
             node = node.parent
@@ -83,6 +93,10 @@ class MonteCarloTree:
         Returns:
             Node: Resulting greedy-optimal choice of child node
         """
+        if node.max_player:
+            sign = 1
+        else:
+            sign = -1
         c = 2
         children = node.children
         if children is None or len(children) == 0:
@@ -90,19 +104,26 @@ class MonteCarloTree:
         child_ucb_vals = []
         for child in children:
             if child.visits == 0:
-                child_ucb_vals.append(np.inf)
+                child_ucb_vals.append(sign * np.inf)
                 continue
             Q = child.value / child.visits
             root = np.sqrt(np.log(node.visits) / child.visits)
-            if node.max_player:
-                child_ucb_vals.append(Q + c * root)
-            else:
-                child_ucb_vals.append(Q - c * root)
+            child_ucb_vals.append(Q + sign * c * root)
         if node.max_player:
-            return children[np.argmax(child_ucb_vals)]
-        return children[np.argmin(child_ucb_vals)]
+            child = children[np.argmax(child_ucb_vals)]
+        else:
+            child = children[np.argmin(child_ucb_vals)]
+        return child
     
     def generate_children(self, node: Node) -> None:
+        """This method will "expand" a leaf node, meaning
+        it will check all actions possible to do from this node,
+        and then add the resulting nodes from these actions as
+        children of the original node.
+
+        Args:
+            node (Node): Node whose children will be generated
+        """
         # Get possible actions for current node
         actions = self.game.get_actions(node)
         for action in actions:
@@ -117,19 +138,3 @@ class MonteCarloTree:
         assert all(c.parent==node for c in node.children), "Children update incorrectly"
         # Since we've expanded a node, it's no longer a leaf node
         node.leaf = False
-
-if __name__ == "__main__":
-    game = Game(game_implementation=Nim(), player=1)
-    # node = game.reset()
-    # node.visits = 5
-    # mtree.generate_children(node)
-    # print(node.children)
-    # c = 1
-    # for child in node.children:
-    #     child.visits += c
-    #     c += 1
-    # child = mtree.get_child(node)
-    # print(child)
-    node = game.reset()
-    mtree = MonteCarloTree(root_node=node, game=game)
-    

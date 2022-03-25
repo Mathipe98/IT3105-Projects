@@ -65,6 +65,9 @@ class Nim:
         encoded_state[index] = 1
         encoded_state[-1] = player
         return encoded_state
+    
+    def get_encoded_shape(self) -> Tuple:
+        return (11,)
 
     
 if __name__ == "__main__":

@@ -9,7 +9,6 @@ class Node:
                 state,
                 parent: Node=None,
                 incoming_edge: int=None,
-                # REMEMBER TO SET MAX PLAYER
                 max_player: bool=True,
                 leaf: bool=True) -> None:
         # Values from instantiation
@@ -24,9 +23,6 @@ class Node:
         self.visits = 0
         self.value = 0
         self.final = None
-    
-    def is_leaf(self) -> bool:
-        return len(self.children) == 0
     
     def __repr__(self) -> str:
         return self.__str__()

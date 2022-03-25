@@ -37,7 +37,10 @@ class Game:
         return reward, done
     
     def encode_node(self, node: Node) -> np.ndarray:
-        return self.game_implementation.encode_node(node)                
+        return self.game_implementation.encode_node(node)    
+
+    def get_encoded_shape(self) -> Tuple:
+        return self.game_implementation.get_encoded_shape()            
     
 
 if __name__ == "__main__":
