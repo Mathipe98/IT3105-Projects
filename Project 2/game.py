@@ -1,8 +1,11 @@
+import numpy as np
+
 from ctypes import Union
 from typing import List, Tuple
-import numpy as np
-from node import Node
+
+from hex import Hex
 from nim import Nim
+from node import Node
 
 class Game:
 
@@ -23,18 +26,7 @@ class Game:
         return self.game_implementation.get_legal_actions(node)
     
     def evaluate(self, node: Node) -> Tuple[int, bool]:
-        reward = 0
-        done = False
-        if self.game_implementation.is_winning(node):
-            reward = 1
-            done = True
-        elif self.game_implementation.is_losing(node):
-            reward = -1
-            done = True
-        # If minimizing player, then flip the reward sign
-        if not node.max_player:
-            reward *= -1
-        return reward, done
+        return self.game_implementation.evaluate(node)
     
     def encode_node(self, node: Node) -> np.ndarray:
         return self.game_implementation.encode_node(node)    
@@ -44,9 +36,8 @@ class Game:
     
 
 if __name__ == "__main__":
-    game = Game(game_implementation=Nim())
+    game = Game(game_implementation=Hex())
     root_node = game.reset()
     actions = game.get_actions(root_node)
-    action = np.random.choice(actions)
-    new_node = game.perform_action(root_node, action)
-    print(f"New node: {new_node}")
+    print(actions)
+    next_node = game.perform_action(root_node=root_node, action=actions[-1], keep_children=True)

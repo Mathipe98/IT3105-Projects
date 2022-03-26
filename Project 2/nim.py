@@ -8,14 +8,12 @@ class Nim:
     def __init__(self, n: int=10, k: int=3) -> None:
         self.n = n
         self.k = k
-        self.current_node = None
 
-    def reset(self, player) -> Node:
-        self.k = self.k
+    def reset(self, player: int) -> Node:
         max_player = True if player == 1 else False
-        self.current_node = Node(state=np.array([self.n]), max_player=max_player)
-        self.current_node.visits = 1
-        return self.current_node
+        current_node = Node(state=np.array([self.n]), max_player=max_player)
+        current_node.visits = 1
+        return current_node
     
     def get_action_space(self) -> int:
         return self.k
@@ -37,9 +35,28 @@ class Nim:
             incoming_edge=action,
             max_player=not root_node.max_player
         )
+        reward, final = self.evaluate(next_node)
+        if final:
+            next_node.final = final
+            next_node.value = reward
+            next_node.visits += 1
         if keep_children:
             root_node.children.append(next_node)
         return next_node
+    
+    def evaluate(self, node: Node) -> Tuple[int, bool]:
+        reward = 0
+        final = False
+        if self.is_winning(node):
+            reward = 1
+            final = True
+        elif self.is_losing(node):
+            reward = -1
+            final = True
+        # If minimizing player, then flip the reward sign
+        if not node.max_player:
+            reward *= -1
+        return reward, final
     
     def is_winning(self, node: Node) -> bool:
         return node.state[0] <= self.k

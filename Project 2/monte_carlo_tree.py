@@ -47,11 +47,7 @@ class MonteCarloTree:
             RuntimeError: Error in case rollout is called on a terminal state
         """
         while True:
-            reward, done = self.game.evaluate(node)
-            if done:
-                node.final = True
-                node.value = reward
-                node.visits += 1
+            if node.final:
                 self.backprop(node)
                 break
             actions = self.game.get_actions(node)
@@ -135,6 +131,6 @@ class MonteCarloTree:
             child_node = self.game.perform_action(root_node=node, action=action)
             assert child_node.parent==node and child_node.incoming_edge==action, "Action performed did not properly update logic"
             node.children.append(child_node)
-        assert all(c.parent==node for c in node.children), "Children update incorrectly"
+        assert all(c.parent==node for c in node.children), "Children updates are incorrect"
         # Since we've expanded a node, it's no longer a leaf node
         node.leaf = False
