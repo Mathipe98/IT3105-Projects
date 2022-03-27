@@ -75,4 +75,119 @@ class Hex:
     
     def is_losing(self, node: Node) -> bool:
         return node.state[0] == 0
+
+    """
+    REMEMBER:
+    In DFS, if I just check the top row for 1's, and then
+    iterate downward and don't find another 1, then I can just
+    return False because then I know nothing is connected.
+    Or something along those lines.
+    Just think if I have [1,0,0,1], [1,0,0,1], [0,0,0,1],
+    then I have to take into account that the first 1 leads
+    to nothing, but the last 1 leads to an actual path.
+    I'll figure something out.
+    """
     
+    def connected_top_bottom(self, node: Node, target: int) -> bool:
+        visited = []
+        queue = []
+        # Append all indexes corresponding to top and bottom row
+        queue.extend(
+            [(0, i) for i in range(self.board_size)] +
+            [(self.board_size - 1, i) for i in range(self.board_size)]
+        )
+        for i in range(self.board_size):
+            if node.state[(0, i)] != target:
+                continue
+            queue.append((0, i))
+            if node.state[(self.board_size-1, i)] != target:
+                continue
+            queue.append((self.board_size-1, i))
+        while queue:
+            row, col = queue.pop(0)
+            visited.append((row, col))
+            for neighbour in self.get_neighbours((row, col)):
+                if neighbour not in visited:
+                    if node.state[neighbour] == target:
+                        queue.append(neighbour)
+                        visited.append(neighbour)
+        if len(visited) == 0:
+            return False
+        # Remove duplicates
+        visited = list(set(visited))
+        # Sort visited nodes by row
+        visited.sort(key=lambda coords: coords[0])
+        while True:
+            row, col = visited.pop(0)
+            if row == self.board_size - 1:
+                return True
+            next_coords = next((c for c in visited if c[0] == row + 1), None)
+            if next_coords is None:
+                return False
+    
+    def bfs(self, node: Node) -> bool:
+        
+        # Append all indexes corresponding to top and bottom row
+        left_col = [(i, 0) for i in range(self.board_size)]
+        right_col = [(i, self.board_size - 1) for i in range(self.board_size)]
+        queue.extend(left_col + right_col)
+        while queue:
+            row, col = queue.pop(0)
+            if node.state[row,col] != target:
+                continue
+            visited.append((row, col))
+            for neighbour in self.get_neighbours((row, col)):
+                if neighbour not in visited:
+                    if node.state[neighbour] == target:
+                        queue.append(neighbour)
+                        visited.append(neighbour)
+        if len(visited) == 0:
+            return False
+        # Remove duplicates
+        visited = list(set(visited))
+        # Sort visited nodes by col
+        visited.sort(key=lambda coords: coords[1])
+        while True:
+            row, col = visited.pop(0)
+            if col == self.board_size - 1:
+                return True
+            next_coords = next((c for c in visited if c[1] == col + 1), None)
+            if next_coords is None:
+                return False
+    
+    def get_neighbours(self, indeces: Tuple) -> List[Tuple]:
+        row, col = indeces
+        max_col = min(col + 1, self.board_size - 1)
+        min_col = max(0, col - 1)
+        max_row = min(row + 1, self.board_size - 1)
+        min_row = max(0, row - 1)
+        return [
+            (min_row, col),
+            (min_row, max_col),
+            (row, max_col),
+            (max_row, col),
+            (max_row, min_col),
+            (row, min_col)
+        ]
+
+if __name__ == '__main__':
+    test = Hex()
+    test_state = np.zeros(shape=(7,7))
+    # test_state[0,0] = 2
+    # test_state[1,0] = 2
+    # test_state[2,0] = 2
+    # test_state[2,1] = 2
+    # test_state[3,1] = 2
+    # test_state[3,2] = 2
+    # test_state[3,3] = 2
+    # test_state[3,4] = 2
+    # test_state[3,5] = 2
+    # test_state[4,5] = 2
+    # test_state[4,6] = 2
+    test_state[:,0] = 2
+    test_state[:,6] = 2
+    test_state[3,:] = 2
+    test_state[3,3] = 2
+    print(test_state)
+    test_node = Node(state=test_state, max_player=True)
+    print(test.bfs(test_node))
