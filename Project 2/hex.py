@@ -1,8 +1,10 @@
+from re import T
 import numpy as np
 import copy
 
 from typing import List, Tuple
 from node import Node
+from visualizer import visualize_hex_node_state
 
 
 class Hex:
@@ -46,8 +48,7 @@ class Hex:
             incoming_edge=action,
             max_player=not root_node.max_player
         )
-        # reward, final = self.evaluate(next_node)
-        reward, final = 0, False
+        reward, final = self.evaluate(next_node)
         if final:
             next_node.final = final
             next_node.value = reward
@@ -70,90 +71,63 @@ class Hex:
         return reward, final
 
     def is_winning(self, node: Node) -> bool:
-        
-        return node.state[0] <= self.k
+        if node.max_player:
+            target = 1
+            return self.connected_top_bottom(node, target)
+        target = 2
+        return self.connected_left_right(node, target)
     
     def is_losing(self, node: Node) -> bool:
-        return node.state[0] == 0
-
-    """
-    REMEMBER:
-    In DFS, if I just check the top row for 1's, and then
-    iterate downward and don't find another 1, then I can just
-    return False because then I know nothing is connected.
-    Or something along those lines.
-    Just think if I have [1,0,0,1], [1,0,0,1], [0,0,0,1],
-    then I have to take into account that the first 1 leads
-    to nothing, but the last 1 leads to an actual path.
-    I'll figure something out.
-    """
+        # P2 is winning <=> P1 is losing
+        if node.max_player:
+            target = 2
+            return self.connected_left_right(node, target)
+        target = 1
+        return self.connected_top_bottom(node, target)
     
     def connected_top_bottom(self, node: Node, target: int) -> bool:
         visited = []
         queue = []
-        # Append all indexes corresponding to top and bottom row
+        # Append all indexes corresponding to top row
         queue.extend(
-            [(0, i) for i in range(self.board_size)] +
-            [(self.board_size - 1, i) for i in range(self.board_size)]
+            [(0, i) for i in range(self.board_size) if node.state[(0,i)] == target]
         )
-        for i in range(self.board_size):
-            if node.state[(0, i)] != target:
-                continue
-            queue.append((0, i))
-            if node.state[(self.board_size-1, i)] != target:
-                continue
-            queue.append((self.board_size-1, i))
+        if len(queue) == 0:
+            return False
         while queue:
-            row, col = queue.pop(0)
-            visited.append((row, col))
-            for neighbour in self.get_neighbours((row, col)):
+            coords = queue.pop(0)
+            visited.append(coords)
+            for neighbour in self.get_neighbours(coords):
                 if neighbour not in visited:
-                    if node.state[neighbour] == target:
+                    if node.state[neighbour] == target and neighbour not in queue:
                         queue.append(neighbour)
-                        visited.append(neighbour)
         if len(visited) == 0:
             return False
-        # Remove duplicates
-        visited = list(set(visited))
-        # Sort visited nodes by row
-        visited.sort(key=lambda coords: coords[0])
-        while True:
-            row, col = visited.pop(0)
-            if row == self.board_size - 1:
-                return True
-            next_coords = next((c for c in visited if c[0] == row + 1), None)
-            if next_coords is None:
-                return False
+        if any(c[0] == self.board_size-1 for c in visited):
+            return True
+        return False
     
-    def bfs(self, node: Node) -> bool:
-        
-        # Append all indexes corresponding to top and bottom row
-        left_col = [(i, 0) for i in range(self.board_size)]
-        right_col = [(i, self.board_size - 1) for i in range(self.board_size)]
-        queue.extend(left_col + right_col)
+    def connected_left_right(self, node: Node, target: int) -> bool:
+        visited = []
+        queue = []
+        # Append all indexes corresponding to left column
+        queue.extend(
+            [(i, 0) for i in range(self.board_size) if node.state[(i,0)] == target]
+        )
+        if len(queue) == 0:
+            return False
         while queue:
-            row, col = queue.pop(0)
-            if node.state[row,col] != target:
-                continue
-            visited.append((row, col))
-            for neighbour in self.get_neighbours((row, col)):
+            coords = queue.pop(0)
+            visited.append(coords)
+            for neighbour in self.get_neighbours(coords):
                 if neighbour not in visited:
-                    if node.state[neighbour] == target:
+                    if node.state[neighbour] == target and neighbour not in queue:
                         queue.append(neighbour)
-                        visited.append(neighbour)
         if len(visited) == 0:
             return False
-        # Remove duplicates
-        visited = list(set(visited))
-        # Sort visited nodes by col
-        visited.sort(key=lambda coords: coords[1])
-        while True:
-            row, col = visited.pop(0)
-            if col == self.board_size - 1:
-                return True
-            next_coords = next((c for c in visited if c[1] == col + 1), None)
-            if next_coords is None:
-                return False
+        if any(c[1] == self.board_size-1 for c in visited):
+            return True
+        return False
     
     def get_neighbours(self, indeces: Tuple) -> List[Tuple]:
         row, col = indeces
@@ -169,25 +143,23 @@ class Hex:
             (max_row, min_col),
             (row, min_col)
         ]
+    
+    def get_encoded_shape(self) -> Tuple:
+        return self.reset(1).state.flatten().shape
+    
+
+def play_random() -> None:
+    game = Hex(board_size=7)
+    node = game.reset(player=1)
+    print(game.get_encoded_shape())
+    while not node.final:
+        actions = game.get_legal_actions(node)
+        action = np.random.choice(actions)
+        node = game.perform_action(root_node=node, action=action)
+    print(f"Final game state:\n{node}")
+    print(f"P1 wins?\t{not node.max_player and game.is_losing(node)}\nP2 wins?\t{node.max_player and game.is_losing(node)}")
+    print(f"Final node evaluation:\t {game.evaluate(node)}")
+    visualize_hex_node_state(node)
 
 if __name__ == '__main__':
-    test = Hex()
-    test_state = np.zeros(shape=(7,7))
-    # test_state[0,0] = 2
-    # test_state[1,0] = 2
-    # test_state[2,0] = 2
-    # test_state[2,1] = 2
-    # test_state[3,1] = 2
-    # test_state[3,2] = 2
-    # test_state[3,3] = 2
-    # test_state[3,4] = 2
-    # test_state[3,5] = 2
-    # test_state[4,5] = 2
-    # test_state[4,6] = 2
-    test_state[:,0] = 2
-    test_state[:,6] = 2
-    test_state[3,:] = 2
-    test_state[3,3] = 2
-    print(test_state)
-    test_node = Node(state=test_state, max_player=True)
-    print(test.bfs(test_node))
+    play_random()
