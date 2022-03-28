@@ -11,6 +11,8 @@ from monte_carlo_tree import MonteCarloTree
 from network import create_model
 from nim import Nim
 from game import Game
+from hex import Hex
+from visualizer import visualize_hex_node_state
 
 np.random.seed(123)
 
@@ -19,15 +21,15 @@ class MCTSAgent:
 
     def __init__(self,
                  game: Game,
-                 n_sims: int,
+                 M: int,
                  episodes: int,
-                 epsilon: float = 0.1,
+                 model_name: str,
                  model_saves: int = 5,
                  use_best_model: bool = True) -> None:
         self.game = game
-        self.n_sims = n_sims
+        self.M = M
         self.episodes = episodes
-        self.epsilon = epsilon
+        self.model_name = model_name
         self.model_saves = model_saves
         self.use_best_model = use_best_model
         self.model = None
@@ -50,9 +52,9 @@ class MCTSAgent:
             raise ValueError("Load weights called before initializing model.")
         try:
             if self.use_best_model:
-                filepath = f"./Project 2/models/target_policy_{self.model_saves - 1}"
+                filepath = f"./Project 2/models/{self.model_name}_target_policy_{self.model_saves - 1}"
             else:
-                filepath = f"./Project 2/models/target_policy_{np.random.randint(0, self.model_saves)}"
+                filepath = f"./Project 2/models/{self.model_name}_target_policy_{np.random.randint(0, self.model_saves)}"
             self.model.load_weights(filepath)
             print(f"Read model from file, so I do not retrain.")
             done_training = True
@@ -68,14 +70,28 @@ class MCTSAgent:
             interval = self.episodes // self.model_saves
             p1_wins = 0
             p2_wins = 0
+            M = 10
+            difference = self.M // 49
+            start_eps = 0.3
+            end_eps = 0.05
             for e in range(self.episodes):
                 print(f"Episode: {e}")
                 root_node = self.game.reset()
                 mc_tree = MonteCarloTree(
-                    root_node=root_node, game=self.game, keep_children=True)
+                    root_node=root_node,
+                    game=self.game,
+                    model=self.model,
+                    start_epsilon=start_eps,
+                    end_epsilon=end_eps,
+                    keep_children=True)
+                action_counter = 0
                 while not root_node.final:
-                    for _ in range(self.n_sims):
-                        mc_tree.traverse()
+                    print(
+                        f"Actions performed in episode {e}: {action_counter}")
+                    epsilon_decay = round((start_eps - end_eps) / M, 4)
+                    for _ in range(M):
+                        mc_tree.traverse(epsilon_decay)
+                    M = min(M + difference, self.M)
                     target = np.zeros(shape=self.game.get_action_space())
                     va_values = [(child.visits, child.incoming_edge)
                                  for child in root_node.children]
@@ -83,34 +99,40 @@ class MCTSAgent:
                         raise ValueError(
                             "ERROR: Visit/Action array is empty in training")
                     factor = 1.0 / sum(va[0] for va in va_values)
-                    # Assume that all actions have integer number ranging from 1 to the action space
                     for visits, action in va_values:
-                        a_index = action - 1
-                        target[a_index] = visits * factor
+                        target[action] = visits * factor
                     network_input = self.game.encode_node(node=root_node)
                     target_tuple = (network_input, target)
                     replay_buffer.append(target_tuple)
-                    # a_index = action - 1 => action = index + 1
-                    best_action = np.argmax(target) + 1
+                    best_action = np.argmax(target)
                     next_node = self.game.perform_action(
                         root_node, best_action)
                     root_node = next_node
+                    # Prune the tree
+                    root_node.parent = None
                     mc_tree = MonteCarloTree(
-                        root_node, self.game, keep_children=True)
+                        root_node=root_node,
+                        game=self.game,
+                        model=self.model,
+                        start_epsilon=start_eps,
+                        end_epsilon=end_eps,
+                        keep_children=True)
+                    action_counter += 1
                 if root_node.max_player:
                     p1_wins += 1
                 else:
                     p2_wins += 1
-                if len(replay_buffer) > 100:
+                if e % interval == 0:
+                    print("Saving weights...")
+                    self.model.save_weights(
+                        f"./Project 2/models/{self.model_name}_target_policy_{e//interval}")
+                if len(replay_buffer) > 1000:
                     minibatch = random.sample(
                         replay_buffer, min(len(replay_buffer), 1000))
                     inputs = np.array([tup[0] for tup in minibatch])
                     targets = np.array([tup[1] for tup in minibatch])
                     self.model.fit(x=inputs, y=targets, epochs=1, verbose=0)
-                if e % interval == 0:
-                    print("Saving weights...")
-                    self.model.save_weights(
-                        f"./Project 2/models/target_policy_{e//interval}")
+                action_counter = 0
             print(f"Training stats:\nP1\t{p1_wins}\nP2\t{p2_wins}")
 
     def play(self) -> None:
@@ -136,11 +158,15 @@ class MCTSAgent:
 
 
 if __name__ == "__main__":
-    game = Game(game_implementation=Nim(), player=1)
-    agent = MCTSAgent(game=game, n_sims=100,
-                      episodes=500, use_best_model=False)
+    game = Game(game_implementation=Hex(7), player=1)
+    agent = MCTSAgent(
+        game=game,
+        M=200,
+        episodes=100,
+        model_name="HEX_7x7",
+        use_best_model=True)
     model_params = {
-        "hidden_layers": (100, 50, 25),
+        "hidden_layers": (128, 64, 32),
         "hl_activations": ('relu', 'relu', 'sigmoid'),
         "output_activation": 'softmax',
         "optimizer": 'Adam',

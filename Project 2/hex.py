@@ -144,12 +144,15 @@ class Hex:
             (row, min_col)
         ]
     
+    def encode_node(self, node: Node) -> np.ndarray:
+        return node.state.flatten()
+    
     def get_encoded_shape(self) -> Tuple:
         return self.reset(1).state.flatten().shape
     
 
 def play_random() -> None:
-    game = Hex(board_size=7)
+    game = Hex(board_size=10)
     node = game.reset(player=1)
     print(game.get_encoded_shape())
     while not node.final:
@@ -162,4 +165,7 @@ def play_random() -> None:
     visualize_hex_node_state(node)
 
 if __name__ == '__main__':
-    play_random()
+    #play_random()
+    g = Hex()
+    n = g.reset(1)
+    print(g.get_legal_actions(n))

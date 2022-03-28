@@ -1,6 +1,11 @@
 import numpy as np
+import tensorflow as tf
+
+from tensorflow import keras
+from keras import Sequential
 
 from game import Game
+from hex import Hex
 from node import Node
 
 np.random.seed(123)
@@ -8,12 +13,15 @@ np.random.seed(123)
 
 class MonteCarloTree:
 
-    def __init__(self, root_node: Node, game: Game, keep_children: bool=False) -> None:
+    def __init__(self, root_node: Node, game: Game, model: Sequential, start_epsilon: float=0.9, end_epsilon: float=0.1, keep_children: bool=False) -> None:
         self.root_node = root_node
         self.game = game
         self.keep_children = keep_children
+        self.model = model
+        self.epsilon = start_epsilon
+        self.end_epsilon = end_epsilon
     
-    def traverse(self) -> None:
+    def traverse(self, epsilon_decay: float=0.01) -> None:
         """This method implements the tree traversal part of
         MCTS. It starts with the trees own root node, and 
         iterates in a loop until it finds a leaf node to either
@@ -24,11 +32,13 @@ class MonteCarloTree:
             if root.leaf:
                 if root.final or root.visits == 0:
                     self.rollout(root)
+                    self.epsilon -= epsilon_decay
                     break
                 else:
                     self.generate_children(root)
                     root = np.random.choice(root.children)
                     self.rollout(root)
+                    self.epsilon -= epsilon_decay
                     break
             else:
                 next_root = self.get_child(root)
@@ -53,8 +63,15 @@ class MonteCarloTree:
             actions = self.game.get_actions(node)
             if actions is None or len(actions) == 0:
                 raise RuntimeError("ERROR: get actions in rollout returned nothing; probably called on terminal state")
-            random_action = np.random.choice(actions)
-            node = self.game.perform_action(root_node=node, action=random_action, keep_children=self.keep_children)
+            if np.random.uniform(0,1) < self.epsilon:
+                action = np.random.choice(actions)
+            else:
+                network_output = self.model(self.game.encode_node(node).reshape(1,-1)).numpy()
+                action = np.argmax(network_output, axis=1)
+                # If the network, during the early phases, opts for an illegal action, then choose a random one
+                if action not in actions:
+                    action = np.random.choice(actions)
+            node = self.game.perform_action(root_node=node, action=action, keep_children=self.keep_children)
 
     def backprop(self, node: Node) -> None:
         """This method takes the value of a terminal node,
