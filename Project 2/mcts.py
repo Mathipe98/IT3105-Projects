@@ -168,11 +168,11 @@ if __name__ == "__main__":
         game=game,
         M=10000,
         episodes=100,
-        model_name="HEX_7x7",
+        model_name="HEX_7x7_BEEFY",
         use_best_model=True)
     model_params = {
-        "hidden_layers": (250, 200, 100, 50),
-        "hl_activations": ('relu', 'relu', 'relu', 'relu'),
+        "hidden_layers": (250, 200, 100),
+        "hl_activations": ('relu', 'relu', 'relu'),
         "output_activation": 'softmax',
         "optimizer": 'Adam',
         "lr": 0.01,
