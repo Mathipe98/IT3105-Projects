@@ -128,7 +128,7 @@ class MCTSAgent:
                         f"./Project 2/models/{self.model_name}_target_policy_{e//interval}")
                 if len(replay_buffer) > 1000:
                     minibatch = random.sample(
-                        replay_buffer, min(len(replay_buffer), 1000))
+                        replay_buffer, min(len(replay_buffer), 10000))
                     inputs = np.array([tup[0] for tup in minibatch])
                     targets = np.array([tup[1] for tup in minibatch])
                     self.model.fit(x=inputs, y=targets, epochs=1, verbose=0)
@@ -144,8 +144,11 @@ class MCTSAgent:
             while not done:
                 encoded = self.game.encode_node(node)
                 encoded = encoded.reshape(1, -1)
+                legal_actions = self.game.get_actions(node)
                 action_probs = self.model(encoded).numpy()
                 action = np.argmax(action_probs, axis=1)[0]
+                if action not in legal_actions:
+                    action = np.random.choice(legal_actions)
                 next_node = self.game.perform_action(
                     root_node=node, action=action)
                 node = next_node
@@ -154,6 +157,8 @@ class MCTSAgent:
                 p1_wins += 1
             else:
                 p2_wins += 1
+            print(f"VISUALIZING GAME {p1_wins + p2_wins}")
+            visualize_hex_node_state(node)
         print(f"NN playing stats:\nP1\t{p1_wins}\nP2\t{p2_wins}")
 
 
@@ -161,13 +166,13 @@ if __name__ == "__main__":
     game = Game(game_implementation=Hex(7), player=1)
     agent = MCTSAgent(
         game=game,
-        M=200,
+        M=10000,
         episodes=100,
         model_name="HEX_7x7",
         use_best_model=True)
     model_params = {
-        "hidden_layers": (128, 64, 32),
-        "hl_activations": ('relu', 'relu', 'sigmoid'),
+        "hidden_layers": (250, 200, 100, 50),
+        "hl_activations": ('relu', 'relu', 'relu', 'relu'),
         "output_activation": 'softmax',
         "optimizer": 'Adam',
         "lr": 0.01,

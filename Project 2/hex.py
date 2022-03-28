@@ -165,7 +165,7 @@ def play_random() -> None:
     visualize_hex_node_state(node)
 
 if __name__ == '__main__':
-    #play_random()
-    g = Hex()
-    n = g.reset(1)
-    print(g.get_legal_actions(n))
+    play_random()
+    # g = Hex()
+    # n = g.reset(1)
+    # print(g.get_legal_actions(n))
