@@ -145,7 +145,7 @@ class MCTSAgent:
                 encoded = self.game.encode_node(node)
                 encoded = encoded.reshape(1, -1)
                 action_probs = self.model(encoded).numpy()
-                action = np.argmax(action_probs, axis=1)[0] + 1
+                action = np.argmax(action_probs, axis=1)[0]
                 next_node = self.game.perform_action(
                     root_node=node, action=action)
                 node = next_node
