@@ -1,11 +1,12 @@
-from typing import List
 import numpy as np
 import random
 import tensorflow as tf
+import time
 
 from collections import deque
 from keras.models import Sequential
 from tensorflow import keras
+from typing import List
 
 from monte_carlo_tree import MonteCarloTree
 from network import create_model
@@ -25,13 +26,15 @@ class MCTSAgent:
                  episodes: int,
                  model_name: str,
                  model_saves: int = 5,
-                 use_best_model: bool = True) -> None:
+                 use_best_model: bool = True,
+                 force_relearn: bool=False) -> None:
         self.game = game
         self.M = M
         self.episodes = episodes
         self.model_name = model_name
         self.model_saves = model_saves
         self.use_best_model = use_best_model
+        self.force_relearn = force_relearn
         self.model = None
 
     def setup_model(self,
@@ -64,16 +67,16 @@ class MCTSAgent:
         return done_training
 
     def train(self):
-        done_training = self.load_weights()
-        if not done_training:
-            replay_buffer = deque(maxlen=100000)
+        if not self.force_relearn:
+            done_training = self.load_weights()
+        if self.force_relearn or not done_training:
+            model_is_trained = False
+            replay_buffer = deque(maxlen=1000000)
             interval = self.episodes // self.model_saves
             p1_wins = 0
             p2_wins = 0
-            M = 10
-            difference = self.M // 49
-            start_eps = 0.3
-            end_eps = 0.05
+            # M = 10
+            # difference = self.M // 49
             for e in range(self.episodes):
                 print(f"Episode: {e}")
                 root_node = self.game.reset()
@@ -81,17 +84,19 @@ class MCTSAgent:
                     root_node=root_node,
                     game=self.game,
                     model=self.model,
-                    start_epsilon=start_eps,
-                    end_epsilon=end_eps,
+                    model_is_trained=model_is_trained,
                     keep_children=True)
                 action_counter = 0
                 while not root_node.final:
+                    mc_tree.reset_values()
                     print(
                         f"Actions performed in episode {e}: {action_counter}")
-                    epsilon_decay = round((start_eps - end_eps) / M, 4)
-                    for _ in range(M):
-                        mc_tree.traverse(epsilon_decay)
-                    M = min(M + difference, self.M)
+                    start = time.time()
+                    for _ in range(self.M):
+                        mc_tree.traverse()
+                    end = time.time()
+                    print(f"Time taken for tree traversal:\t{end-start}")
+                    # M = min(M + difference, self.M)
                     target = np.zeros(shape=self.game.get_action_space())
                     va_values = [(child.visits, child.incoming_edge)
                                  for child in root_node.children]
@@ -114,24 +119,25 @@ class MCTSAgent:
                         root_node=root_node,
                         game=self.game,
                         model=self.model,
-                        start_epsilon=start_eps,
-                        end_epsilon=end_eps,
+                        model_is_trained=model_is_trained,
                         keep_children=True)
                     action_counter += 1
                 if root_node.max_player:
-                    p1_wins += 1
-                else:
                     p2_wins += 1
+                else:
+                    p1_wins += 1
                 if e % interval == 0:
                     print("Saving weights...")
                     self.model.save_weights(
                         f"./Project 2/models/{self.model_name}_target_policy_{e//interval}")
-                if len(replay_buffer) > 1000:
+                if len(replay_buffer) > 10:
+                    print("TRAINING NETWORK")
+                    model_is_trained = True
                     minibatch = random.sample(
-                        replay_buffer, min(len(replay_buffer), 10000))
+                        replay_buffer, min(len(replay_buffer), 100000))
                     inputs = np.array([tup[0] for tup in minibatch])
                     targets = np.array([tup[1] for tup in minibatch])
-                    self.model.fit(x=inputs, y=targets, epochs=1, verbose=0)
+                    self.model.fit(x=inputs, y=targets, epochs=10, verbose=1)
                 action_counter = 0
             print(f"Training stats:\nP1\t{p1_wins}\nP2\t{p2_wins}")
 
@@ -154,9 +160,9 @@ class MCTSAgent:
                 node = next_node
                 _, done = self.game.evaluate(node)
             if node.max_player:
-                p1_wins += 1
-            else:
                 p2_wins += 1
+            else:
+                p1_wins += 1
             print(f"VISUALIZING GAME {p1_wins + p2_wins}")
             visualize_hex_node_state(node)
         print(f"NN playing stats:\nP1\t{p1_wins}\nP2\t{p2_wins}")
@@ -166,14 +172,15 @@ if __name__ == "__main__":
     game = Game(game_implementation=Hex(7), player=1)
     agent = MCTSAgent(
         game=game,
-        M=10000,
+        M=2500,
         episodes=100,
-        model_name="HEX_7x7_BEEFY",
-        use_best_model=True)
+        model_name="HEX_7x7_Attempt_2",
+        use_best_model=True,
+        force_relearn=True)
     model_params = {
-        "hidden_layers": (250, 200, 100),
+        "hidden_layers": (500, 250, 100),
         "hl_activations": ('relu', 'relu', 'relu'),
-        "output_activation": 'softmax',
+        "output_activation": 'sigmoid',
         "optimizer": 'Adam',
         "lr": 0.01,
     }

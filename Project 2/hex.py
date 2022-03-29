@@ -41,7 +41,7 @@ class Hex:
         if value_at_index != 0:
             raise ValueError("Attempted to place piece where another one already lies")
         new_state = copy.copy(root_node.state)
-        new_state[row_index, column_index] = 1 if root_node.max_player else 2
+        new_state[row_index, column_index] = 1 if root_node.max_player else -1
         next_node = Node(
             state=new_state,
             parent=root_node,
@@ -74,13 +74,13 @@ class Hex:
         if node.max_player:
             target = 1
             return self.connected_top_bottom(node, target)
-        target = 2
+        target = -1
         return self.connected_left_right(node, target)
     
     def is_losing(self, node: Node) -> bool:
         # P2 is winning <=> P1 is losing
         if node.max_player:
-            target = 2
+            target = -1
             return self.connected_left_right(node, target)
         target = 1
         return self.connected_top_bottom(node, target)
@@ -145,10 +145,15 @@ class Hex:
         ]
     
     def encode_node(self, node: Node) -> np.ndarray:
-        return node.state.flatten()
+        player = 1 if node.max_player else -1
+        state = node.state.flatten()
+        encoded_state = np.append(state, player)
+        return encoded_state
     
     def get_encoded_shape(self) -> Tuple:
-        return self.reset(1).state.flatten().shape
+        state_shape = self.reset(1).state.flatten().shape
+        encoded_shape = (state_shape[0] + 1,)
+        return encoded_shape
     
 
 def play_random() -> None:

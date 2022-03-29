@@ -1,2 +1,2 @@
-model_checkpoint_path: "HEX_7x7_target_policy_4"
-all_model_checkpoint_paths: "HEX_7x7_target_policy_4"
+model_checkpoint_path: "HEX_3x3_new_testing_target_policy_4"
+all_model_checkpoint_paths: "HEX_3x3_new_testing_target_policy_4"

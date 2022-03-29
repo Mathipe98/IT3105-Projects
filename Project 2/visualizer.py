@@ -32,7 +32,7 @@ def visualize_hex_node_state(node: Node) -> None:
         pos[coords] = np.dot(rotation_matrix, (y,-x))
         if node.state[coords] == 1:
             colour_map.append("red")
-        elif node.state[coords] == 2:
+        elif node.state[coords] == -1:
             colour_map.append("blue")
         else:
             colour_map.append("grey")

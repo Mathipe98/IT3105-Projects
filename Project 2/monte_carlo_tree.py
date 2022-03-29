@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 import tensorflow as tf
 
@@ -13,15 +14,16 @@ np.random.seed(123)
 
 class MonteCarloTree:
 
-    def __init__(self, root_node: Node, game: Game, model: Sequential, start_epsilon: float=0.9, end_epsilon: float=0.1, keep_children: bool=False) -> None:
+    def __init__(self, root_node: Node, game: Game, model: Sequential,
+                model_is_trained: bool, epsilon: float=0.1, keep_children: bool=False) -> None:
         self.root_node = root_node
         self.game = game
         self.keep_children = keep_children
         self.model = model
-        self.epsilon = start_epsilon
-        self.end_epsilon = end_epsilon
+        self.model_is_trained = model_is_trained
+        self.epsilon = epsilon
     
-    def traverse(self, epsilon_decay: float=0.01) -> None:
+    def traverse(self) -> None:
         """This method implements the tree traversal part of
         MCTS. It starts with the trees own root node, and 
         iterates in a loop until it finds a leaf node to either
@@ -32,13 +34,11 @@ class MonteCarloTree:
             if root.leaf:
                 if root.final or root.visits == 0:
                     self.rollout(root)
-                    self.epsilon -= epsilon_decay
                     break
                 else:
                     self.generate_children(root)
                     root = np.random.choice(root.children)
                     self.rollout(root)
-                    self.epsilon -= epsilon_decay
                     break
             else:
                 next_root = self.get_child(root)
@@ -63,7 +63,8 @@ class MonteCarloTree:
             actions = self.game.get_actions(node)
             if actions is None or len(actions) == 0:
                 raise RuntimeError("ERROR: get actions in rollout returned nothing; probably called on terminal state")
-            if np.random.uniform(0,1) < self.epsilon:
+            # Greedy epsilon + if model is not trained, then choose random action anyway
+            if np.random.uniform(0,1) < self.epsilon or not self.model_is_trained:
                 action = np.random.choice(actions)
             else:
                 network_output = self.model(self.game.encode_node(node).reshape(1,-1)).numpy()
@@ -80,13 +81,13 @@ class MonteCarloTree:
         Args:
             node (Node): Terminal node whose value will backpropagate
         """
-        value = node.value
+        value = np.sign(node.value) * 1
         while True:
+            node.visits += 1
+            node.value += value
             node = node.parent
             if node is None:
                 break
-            node.value += value
-            node.visits += 1
 
     def get_child(self, node: Node) -> Node:
         """This method calculated the upper confidence bound value of a node,
@@ -110,7 +111,7 @@ class MonteCarloTree:
             sign = 1
         else:
             sign = -1
-        c = 2
+        c = 1.0
         children = node.children
         if children is None or len(children) == 0:
             raise RuntimeError("Called get_child when node has no children.")
@@ -151,3 +152,16 @@ class MonteCarloTree:
         assert all(c.parent==node for c in node.children), "Children updates are incorrect"
         # Since we've expanded a node, it's no longer a leaf node
         node.leaf = False
+    
+    def reset_values(self) -> None:
+        root = self.root_node
+        root.visits = 1
+        queue = copy.copy(root.children)
+        while len(queue) > 0:
+            for node in queue:
+                node.visits = 0
+                node.value = np.sign(node.value) if node.final else 0
+                if len(node.children) != 0:
+                    queue.extend(node.children)
+                queue.remove(node)
+        
