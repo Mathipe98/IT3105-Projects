@@ -1,3 +1,4 @@
+from typing import List, Tuple
 import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
@@ -5,7 +6,7 @@ import time
 
 from node import Node
 
-def visualize_hex_node_state(node: Node) -> None:
+def get_graph(node: Node) -> Tuple[nx.Graph, List, List]:
     board_size = node.state.shape[0]
     G = nx.grid_2d_graph(board_size, board_size)
     plt.figure(figsize=(10,10))
@@ -36,10 +37,15 @@ def visualize_hex_node_state(node: Node) -> None:
             colour_map.append("blue")
         else:
             colour_map.append("grey")
+    
+    return G, pos, colour_map
+
+def visualize_hex_node_state(node: Node) -> None:
+    G, pos, colour_map = get_graph(node)
 
     nx.draw(G, pos=pos, 
             node_color=colour_map,
-            with_labels=False,
+            with_labels=True,
             node_size=600)
     plt.show()
 

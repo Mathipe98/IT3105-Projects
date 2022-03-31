@@ -2,8 +2,9 @@ import copy
 import numpy as np
 import tensorflow as tf
 
-from tensorflow import keras
 from keras import Sequential
+from multiprocessing import Pool
+from tensorflow import keras
 
 from game import Game
 from hex import Hex
@@ -15,7 +16,7 @@ np.random.seed(123)
 class MonteCarloTree:
 
     def __init__(self, root_node: Node, game: Game, model: Sequential,
-                model_is_trained: bool, epsilon: float=0.1, keep_children: bool=False) -> None:
+                model_is_trained: bool, epsilon: float=0.15, keep_children: bool=False) -> None:
         self.root_node = root_node
         self.game = game
         self.keep_children = keep_children
@@ -67,7 +68,7 @@ class MonteCarloTree:
             if np.random.uniform(0,1) < self.epsilon or not self.model_is_trained:
                 action = np.random.choice(actions)
             else:
-                network_output = self.model(self.game.encode_node(node).reshape(1,-1)).numpy()
+                network_output = self.model.predict(self.game.encode_node(node).reshape(1,-1))
                 action = np.argmax(network_output, axis=1)
                 # If the network, during the early phases, opts for an illegal action, then choose a random one
                 if action not in actions:
@@ -111,7 +112,7 @@ class MonteCarloTree:
             sign = 1
         else:
             sign = -1
-        c = 1.0
+        c = 2.0
         children = node.children
         if children is None or len(children) == 0:
             raise RuntimeError("Called get_child when node has no children.")
