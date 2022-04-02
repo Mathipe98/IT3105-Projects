@@ -248,4 +248,4 @@ if __name__ == "__main__":
     }
     agent.setup_model(**model_params)
     agent.train()
-    agent.play_against_network()
+    # agent.play_against_network()
