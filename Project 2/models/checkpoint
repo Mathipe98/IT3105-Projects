@@ -1,2 +1,2 @@
-model_checkpoint_path: "HEX_7x7_large-dims_kl-div_sigmoid-softmax_99"
-all_model_checkpoint_paths: "HEX_7x7_large-dims_kl-div_sigmoid-softmax_99"
+model_checkpoint_path: "HEX_7x7_Further_Trained_0"
+all_model_checkpoint_paths: "HEX_7x7_Further_Trained_0"

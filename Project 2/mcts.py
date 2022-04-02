@@ -30,17 +30,19 @@ class MCTSAgent:
                  game: Game,
                  M: int,
                  episodes: int,
-                 model_name: str,
+                 model_file: str,
                  model_saves: int = 100,
-                 use_best_model: bool = True,
-                 force_relearn: bool = False) -> None:
+                 force_relearn: bool = False,
+                 continue_train_old_model: bool=False,
+                 new_model_file: str=None) -> None:
         self.game = game
         self.M = M
         self.episodes = episodes
-        self.model_name = model_name
+        self.model_file = model_file
         self.model_saves = model_saves
-        self.use_best_model = use_best_model
         self.force_relearn = force_relearn
+        self.continue_train_old_model = continue_train_old_model
+        self.new_model_file = new_model_file
         self.model = None
         self.lite_model = None
         self.replay_buffer = deque(maxlen=100000)
@@ -64,16 +66,12 @@ class MCTSAgent:
         if self.model is None:
             raise ValueError("Load weights called before initializing model.")
         try:
-            if self.use_best_model:
-                filepath = f"./Project 2/models/{self.model_name}_target_policy_{self.model_saves - 1}"
-            else:
-                # np.random.randint(0, self.model_saves)}"
-                filepath = f"./Project 2/models/{self.model_name}_target_policy_{13}"
+            filepath = f"./Project 2/models/{self.model_file}"
             self.model.load_weights(filepath)
-            print(f"Read model from file, so I do not retrain.")
+            print(f"Read model from file!")
             done_training = True
         except:
-            print(f"Could not read weights from file. Must retrain...")
+            print(f"Could not read weights from file... Must train from scratch.")
             done_training = False
         return done_training
 
@@ -97,7 +95,6 @@ class MCTSAgent:
                 mc_tree.traverse()
             end = time.time()
             print(f"Time taken for tree traversal:\n\t{end-start}")
-             # M = min(M + difference, self.M)
             self.traversal_times.append(end-start)
             print(f"Average time taken for tree traversal the last 1000 iterations:\n\t{np.mean(self.traversal_times)}")
             target = np.zeros(shape=self.game.get_action_space())
@@ -125,15 +122,18 @@ class MCTSAgent:
                 model_is_trained=self.model_is_trained,
                 keep_children=True)
             action_counter += 1
-        if len(self.replay_buffer) > 1000:
+        if len(self.replay_buffer) > 10:
             if episode % interval == 0:
                 print("Saving weights...")
-                self.model.save_weights(
-                f"./Project 2/models/{self.model_name}_{episode//interval}")
+                if not self.continue_train_old_model:
+                    filepath = f"./Project 2/models/{self.model_file}_{episode//interval}"
+                else:
+                    filepath = f"./Project 2/models/{self.new_model_file}_{episode//interval}"
+                self.model.save_weights(filepath)
             print("TRAINING NETWORK")
             self.model_is_trained = True
             minibatch = random.sample(
-                self.replay_buffer, 1000)
+                self.replay_buffer, 10)
             inputs = np.array([tup[0] for tup in minibatch])
             targets = np.array([tup[1] for tup in minibatch])
             self.model.fit(x=inputs, y=targets, epochs=1, verbose=1)
@@ -142,14 +142,11 @@ class MCTSAgent:
     def train(self):
         if not self.force_relearn:
             done_training = self.load_weights()
-        if self.force_relearn or not done_training:
+        if self.force_relearn or self.continue_train_old_model or not done_training:
             interval = self.episodes // self.model_saves
             self.lite_model = LiteModel.from_keras_model(self.model)
             for e in range(self.episodes):
                 self.train_single_episode((e, interval))
-                # Start with M = 2000, then reduce when neural network actually enters
-                if self.model_is_trained:
-                    self.M = 1000
 
     def play_against_network(self) -> None:
         node = self.game.reset()
@@ -231,14 +228,19 @@ class MCTSAgent:
 
 
 if __name__ == "__main__":
+    old_model_file = "HEX_7x7_large-dims_kl-div_sigmoid-softmax_99"
+    further_trained_model = "HEX_7x7_Further_Trained"
     game = Game(game_implementation=Hex(7), player=1)
     agent = MCTSAgent(
         game=game,
-        M=2000,
-        episodes=1000,
-        model_name="HEX_7x7_large-dims_kl-div_sigmoid-softmax",
-        use_best_model=False,
-        force_relearn=True)
+        M=3000,
+        episodes=2000,
+        model_file="HEX_7x7_large-dims_kl-div_sigmoid-softmax_99",
+        model_saves=100,
+        force_relearn=False,
+        continue_train_old_model=True,
+        new_model_file=further_trained_model)
+    agent.model_is_trained = True
     model_params = {
         "hidden_layers": (512, 256,),
         "hl_activations": ('relu', 'sigmoid'),
@@ -248,4 +250,4 @@ if __name__ == "__main__":
     }
     agent.setup_model(**model_params)
     agent.train()
-    # agent.play_against_network()
+    agent.play_against_network()
