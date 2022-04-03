@@ -122,7 +122,7 @@ class MCTSAgent:
                 model_is_trained=self.model_is_trained,
                 keep_children=True)
             action_counter += 1
-        if len(self.replay_buffer) > 10:
+        if len(self.replay_buffer) > 1000:
             if episode % interval == 0:
                 print("Saving weights...")
                 if not self.continue_train_old_model:
@@ -132,11 +132,12 @@ class MCTSAgent:
                 self.model.save_weights(filepath)
             print("TRAINING NETWORK")
             self.model_is_trained = True
-            minibatch = random.sample(
-                self.replay_buffer, 10)
-            inputs = np.array([tup[0] for tup in minibatch])
-            targets = np.array([tup[1] for tup in minibatch])
-            self.model.fit(x=inputs, y=targets, epochs=1, verbose=1)
+            for _ in range(5):
+                minibatch = random.sample(
+                    self.replay_buffer, 1000)
+                inputs = np.array([tup[0] for tup in minibatch])
+                targets = np.array([tup[1] for tup in minibatch])
+                self.model.fit(x=inputs, y=targets, epochs=1, verbose=1)
             self.lite_model = LiteModel.from_keras_model(self.model)
         
     def train(self):
@@ -233,7 +234,7 @@ if __name__ == "__main__":
     game = Game(game_implementation=Hex(7), player=1)
     agent = MCTSAgent(
         game=game,
-        M=3000,
+        M=2000,
         episodes=2000,
         model_file="HEX_7x7_large-dims_kl-div_sigmoid-softmax_99",
         model_saves=100,
@@ -250,4 +251,4 @@ if __name__ == "__main__":
     }
     agent.setup_model(**model_params)
     agent.train()
-    agent.play_against_network()
+    # agent.play_against_network()
