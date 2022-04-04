@@ -7,13 +7,13 @@ from keras.layers import Dense, InputLayer
 np.random.seed(123)
 tf.random.set_seed(123)
 
-def create_model(n_input: int, hidden_layers: tuple, hl_activations: List, n_output: int, output_activation: str, optimizer: str, lr: float) -> tf.keras.Sequential:
+def create_model(n_input: int, hidden_layers: tuple, hl_activations: List, output_size: int, output_activation: str, optimizer: str, lr: float) -> tf.keras.Sequential:
     assert len(hidden_layers) == len(hl_activations), "An activation function must be provided for each hidden layer"
     model = keras.Sequential()
     model.add(InputLayer(input_shape=(n_input,)))
     for dim, activation in zip(hidden_layers, hl_activations):
         model.add(Dense(dim, activation=activation))
-    model.add(Dense(n_output, activation=output_activation))
+    model.add(Dense(output_size, activation=output_activation))
     if optimizer == 'Adagrad':
         optimizer = tf.keras.optimizers.Adagrad(learning_rate=lr)
     elif optimizer == 'SGD':

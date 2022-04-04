@@ -199,11 +199,11 @@ class ActorClient:
 
         else:
             raise RuntimeError(
-                'Received unexpected message from server "{msg}"'.format(msg=msg)
+                'Received unexpected message from server "{msg}"'.format(
+                    msg=msg)
             )
 
         return True
-
 
     # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     #   Utilities
@@ -231,7 +231,7 @@ class ActorClient:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         context.load_verify_locations(self.cert)
         context.verify_mode = ssl.CERT_REQUIRED
-        context.check_hostname = False # We have no hostname for the server
+        context.check_hostname = False  # We have no hostname for the server
         return context.wrap_socket(raw_sock)
 
     @contextlib.contextmanager
@@ -265,7 +265,8 @@ class ActorClient:
         i_size = struct.calcsize('i')
         while header_num < i_size:
             recv = self.sock.recv(i_size - header_num)
-            if not recv: raise socket.error('Received empty string')
+            if not recv:
+                raise socket.error('Received empty string')
             header_num += len(recv)
             header.append(recv)
         data_size = struct.unpack('i', b''.join(header))[0]
@@ -275,7 +276,8 @@ class ActorClient:
         body = []
         while body_num < data_size:
             recv = self.sock.recv(data_size - body_num)
-            if not recv: raise socket.error('Received empty string')
+            if not recv:
+                raise socket.error('Received empty string')
             body_num += len(recv)
             body.append(recv)
         msg = b''.join(body)
@@ -462,7 +464,8 @@ class ActorClient:
               path of ones from the top to the bottom following the
               neighborhood description given in `handle_get_action`
         """
-        self.logger.info('Game over: winner=%s end_state=%s', winner, end_state)
+        self.logger.info('Game over: winner=%s end_state=%s',
+                         winner, end_state)
 
     def handle_series_over(self, stats):
         """Called after each set of games against an opponent is finished
@@ -485,7 +488,6 @@ class ActorClient:
             score (float): Your score (your win %) for the tournament
         """
         self.logger.info('Tournament over: score=%s', score)
-
 
     # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     #   API methods
