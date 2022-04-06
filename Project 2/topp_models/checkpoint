@@ -1,2 +1,2 @@
-model_checkpoint_path: "HEX_5x5_TOPP_1"
-all_model_checkpoint_paths: "HEX_5x5_TOPP_1"
+model_checkpoint_path: "HEX_4x4_TOPP_REALTIME_DEMO_4"
+all_model_checkpoint_paths: "HEX_4x4_TOPP_REALTIME_DEMO_4"

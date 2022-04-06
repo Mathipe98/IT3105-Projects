@@ -40,7 +40,8 @@ class MCTSAgent:
                  display_training: bool = False,
                  display_playing: bool = True,
                  topp: bool = False,
-                 topp_games: int=25) -> None:
+                 topp_games: int=25,
+                 play_network: bool=False) -> None:
         self.game = game
         self.tree_traversals = tree_traversals
         self.episodes = n_episodes
@@ -51,6 +52,7 @@ class MCTSAgent:
         self.display_playing = display_playing
         self.topp = topp
         self.topp_games = topp_games
+        self.play_network = play_network
         self.model = None
         self.lite_model = None
         self.replay_buffer = deque(maxlen=100000)
@@ -79,8 +81,8 @@ class MCTSAgent:
                 suffix = "_0"
             else:
                 dir = "models"
-                suffix = f"_{self.episodes // (self.episodes // self.model_saves)}"
-            filepath = f"./{dir}/{self.model_name}"# + suffix
+                suffix = ""
+            filepath = f"./{dir}/{self.model_name}" + suffix
             self.model.load_weights(filepath)
             print(f"Read model from file!")
             done_training = True
@@ -142,11 +144,11 @@ class MCTSAgent:
                 keep_children=True)
             action_counter += 1
             if self.display_training:
-                visualize_hex_node_state(root_node)
+                visualize_hex_node_state(root_node, done=root_node.final)
                 print(f"Visualized training action #{action_counter}")
                 time.sleep(2)
         if self.display_training:
-            visualize_hex_node_state(root_node)
+            visualize_hex_node_state(root_node, done=root_node.final)
             print(f"Visualizing final state in game #{episode}")
             time.sleep(2)
         if episode % interval == 0:
@@ -231,7 +233,7 @@ class MCTSAgent:
                 if done:
                     print("Congratulations! You beat the AI program.")
                     if self.display_playing:
-                        visualize_hex_node_state(next_node)
+                        visualize_hex_node_state(next_node, done)
                         print()
                         time.sleep(5)
                     break
@@ -241,7 +243,7 @@ class MCTSAgent:
                 if done:
                     print("Sorry, you lost against the AI program.")
                     if self.display_playing:
-                        visualize_hex_node_state(next_node)
+                        visualize_hex_node_state(next_node, done)
                         print()
                         time.sleep(5)
                     break
@@ -253,7 +255,7 @@ class MCTSAgent:
                 if done:
                     print("Sorry, you lost against the AI program.")
                     if self.display_playing:
-                        visualize_hex_node_state(next_node)
+                        visualize_hex_node_state(next_node, done)
                         print()
                         time.sleep(5)
                     break
@@ -263,7 +265,7 @@ class MCTSAgent:
                 if done:
                     print("Congratulations! You beat the AI program.")
                     if self.display_playing:
-                        visualize_hex_node_state(next_node)
+                        visualize_hex_node_state(next_node, done)
                         print()
                         time.sleep(5)
                     break
@@ -339,7 +341,6 @@ class MCTSAgent:
             model_1_start = g % 2 == 0
             print(f"Starting game {g}.\n")
             node = self.game.reset()
-            _, done = self.game.evaluate(node)
             if self.display_playing:
                 visualize_hex_node_state(node)
             while True:
@@ -354,7 +355,7 @@ class MCTSAgent:
                     if reward != 0:
                         model_1_wins += 1
                     if self.display_playing:
-                        visualize_hex_node_state(next_node)
+                        visualize_hex_node_state(next_node, done)
                         print()
                     break
                 node = next_node
@@ -368,7 +369,7 @@ class MCTSAgent:
                     if reward != 0:
                         model_2_wins += 1
                     if self.display_playing:
-                        visualize_hex_node_state(next_node)
+                        visualize_hex_node_state(next_node, done)
                         print()
                     break
                 node = next_node

@@ -1,0 +1,28 @@
+[DEFAULT]
+ServerAliveInterval = 45
+Compression = yes
+CompressionLevel = 9
+ForwardX11 = yes
+
+[ACTOR]
+n_episodes = 10
+tree_traversals = 1000
+display_training = False
+display_playing = True
+force_relearn = True
+model_name = HEX_PARAMS_DEMO
+model_saves = 5
+topp = False
+topp_games = 10
+play_network = False
+
+[GAME]
+board_size = 4
+
+[NETWORK]
+hidden_layers = (512,256,128,64)
+hl_activations = ["relu", "sigmoid", "tanh", "linear"]
+output_activation = softmax
+optimizer = Adagrad
+lr = 0.01
+

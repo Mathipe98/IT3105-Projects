@@ -40,7 +40,8 @@ def get_graph(node: Node) -> Tuple[nx.Graph, List, List]:
     
     return G, pos, colour_map
 
-def visualize_hex_node_state(node: Node) -> None:
+
+def visualize_hex_node_state(node: Node, done: bool=False) -> None:
     G, pos, colour_map = get_graph(node)
     nx.draw(G, pos=pos,
             node_color=colour_map,
@@ -48,6 +49,8 @@ def visualize_hex_node_state(node: Node) -> None:
             node_size=600)
     plt.draw()
     plt.pause(0.001)
+    if done:
+        plt.close()
 
 if __name__ == "__main__":
     plt.figure(figsize=(5,5))

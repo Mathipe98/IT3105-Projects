@@ -15,15 +15,17 @@ from hex import Hex, visualize_hex_node_state
 
 os.chdir(pathlib.Path(__file__).parent.resolve())
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '4'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 np.random.seed(123)
 tf.config.threading.set_intra_op_parallelism_threads(4)
 tf.config.threading.set_inter_op_parallelism_threads(4)
+tf.get_logger().setLevel('ERROR')
+tf.autograph.set_verbosity(3)
 
 
-def parse_config() -> Tuple[Dict, Dict, Dict]:
+def parse_config() -> Tuple[Dict, Dict, Dict, bool]:
     config = configparser.ConfigParser()
-    config.read('./config.txt')
+    config.read('./configs/config.txt')
     actor_config = {}
     game_config = {}
     network_config = {}
@@ -50,6 +52,9 @@ def parse_config() -> Tuple[Dict, Dict, Dict]:
             )
             actor_config["topp_games"] = int(
                 config.get(section, "topp_games"))
+            actor_config["play_network"] = ast.literal_eval(
+                config.get(section, "play_network")
+            )
         elif section == "GAME":
             game_config["board_size"] = int(config.get(section, "board_size"))
         elif section == "NETWORK":
@@ -92,10 +97,12 @@ def start() -> None:
     agent = setup_actor()
     print(f"Starting training.\n")
     agent.train()
-    # print("Playing against the network.")
-    # agent.play_against_network()
-    print("Starting TOPP.")
-    agent.play_topp()
+    if agent.play_network:
+        print("Playing against the network.")
+        agent.play_against_network()
+    if agent.topp:
+        print("Starting TOPP.")
+        agent.play_topp()
 
 
 if __name__ == '__main__':

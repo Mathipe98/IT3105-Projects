@@ -1,0 +1,27 @@
+[DEFAULT]
+ServerAliveInterval = 45
+Compression = yes
+CompressionLevel = 9
+ForwardX11 = yes
+
+[ACTOR]
+n_episodes = 200
+tree_traversals = 1000
+display_training = False
+display_playing = True
+force_relearn = False
+model_name = HEX_5x5_TOPP
+model_saves = 5
+topp = True
+topp_games = 10
+play_network = False
+
+[GAME]
+board_size = 5
+
+[NETWORK]
+hidden_layers = (512,256,)
+hl_activations = ["relu", "sigmoid"]
+output_activation = softmax
+optimizer = Adam
+lr = 0.01

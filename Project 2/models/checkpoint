@@ -1,2 +1,2 @@
-model_checkpoint_path: "HEX_7x7_Further_Trained_99"
-all_model_checkpoint_paths: "HEX_7x7_Further_Trained_99"
+model_checkpoint_path: "HEX_PARAMS_DEMO_0"
+all_model_checkpoint_paths: "HEX_PARAMS_DEMO_0"
