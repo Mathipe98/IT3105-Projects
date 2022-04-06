@@ -300,7 +300,8 @@ class MCTSAgent:
 
     def play_topp(self) -> None:
         if not self.topp:
-            raise ValueError("Cannot play TOPP when TOPP is not enabled.")
+            print("Cannot play TOPP when TOPP is not enabled.")
+            return -1
         n_models = self.episodes // (self.episodes // self.model_saves)
         all_models = []
         for i in range(n_models):
@@ -351,7 +352,6 @@ class MCTSAgent:
                     if self.display_playing:
                         visualize_hex_node_state(next_node)
                         print()
-                        time.sleep(1)
                     break
                 node = next_node
                 if model_1_start:
@@ -365,7 +365,6 @@ class MCTSAgent:
                     if self.display_playing:
                         visualize_hex_node_state(next_node)
                         print()
-                        time.sleep(5)
                     break
                 node = next_node
         return model_1_wins, model_2_wins
