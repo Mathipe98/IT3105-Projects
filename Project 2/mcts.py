@@ -8,7 +8,8 @@ import tensorflow as tf
 import time
 
 from collections import deque
-from keras.models import Sequential
+from itertools import combinations
+from keras.models import Sequential, clone_model
 from multiprocessing import Pool
 from tensorflow import keras
 from typing import List, Tuple
@@ -21,7 +22,7 @@ from game import Game
 from hex import Hex
 from visualizer import visualize_hex_node_state
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '4' 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '4'
 np.random.seed(123)
 tf.config.threading.set_intra_op_parallelism_threads(4)
 tf.config.threading.set_inter_op_parallelism_threads(4)
@@ -38,7 +39,8 @@ class MCTSAgent:
                  force_relearn: bool = False,
                  display_training: bool = False,
                  display_playing: bool = True,
-                 topp: bool = False) -> None:
+                 topp: bool = False,
+                 topp_games: int=25) -> None:
         self.game = game
         self.tree_traversals = tree_traversals
         self.episodes = n_episodes
@@ -48,6 +50,7 @@ class MCTSAgent:
         self.display_training = display_training
         self.display_playing = display_playing
         self.topp = topp
+        self.topp_games = topp_games
         self.model = None
         self.lite_model = None
         self.replay_buffer = deque(maxlen=100000)
@@ -189,9 +192,11 @@ class MCTSAgent:
             visualize_hex_node_state(next_node)
         return next_node
     
-    def get_actor_move(self, from_node: Node) -> Node:
+    def get_actor_move(self, from_node: Node, model: Sequential=None) -> Node:
+        if model is None:
+            model = self.model
         encoded_node = self.game.encode_node(from_node).reshape(1, -1)
-        action_probs = self.model(encoded_node).numpy()
+        action_probs = model(encoded_node).numpy()
         action = np.argmax(action_probs, axis=1)[0]
         legal_actions = self.game.get_actions(from_node)
         if action not in legal_actions:
@@ -292,3 +297,75 @@ class MCTSAgent:
         row = action // self.game.game_implementation.board_size
         col = action - size * row
         return int(row),int(col)
+
+    def play_topp(self) -> None:
+        if not self.topp:
+            raise ValueError("Cannot play TOPP when TOPP is not enabled.")
+        n_models = self.episodes // (self.episodes // self.model_saves)
+        all_models = []
+        for i in range(n_models):
+            copied_model = clone_model(self.model)
+            try:
+                copied_model.load_weights(f"./topp_models/{self.model_name}_{i}")
+                print(f"Loaded model {i} from path: ./topp_models/{self.model_name}_{i}")
+            except:
+                raise RuntimeError("Could not load model weights in TOPP")
+            all_models.append(copied_model)
+        scoreboard = {
+            f"{self.model_name}_{i}": 0 for i in range(len(all_models))
+        }
+        for m1 in range(len(all_models)):
+            for m2 in range(m1):
+                print(f"\n==========\nStarting new game between {self.model_name}_{m1} & {self.model_name}_{m2}...\n==========\n")
+                model_1 = all_models[m1]
+                model_2 = all_models[m2]
+                m1_score, m2_score = self.compete(model_1, model_2)
+                # Add score to scoreboard
+                scoreboard[f"{self.model_name}_{m1}"] += m1_score
+                scoreboard[f"{self.model_name}_{m2}"] += m2_score
+        scoreboard = {k: v for k, v in sorted(scoreboard.items(), key=lambda item: item[1])}
+        print(f"\n==========\nFinal scoreboard:\n==========\n")
+        for model_name, score in scoreboard.items():
+            print(f"{model_name}: {score}")
+        
+    
+    def compete(self, model_1, model_2) -> Tuple[int, int]:
+        model_1_wins = 0
+        model_2_wins = 0
+        for g in range(self.topp_games):
+            model_1_start = g % 2 == 0
+            print(f"Starting game {g}.\n")
+            node = self.game.reset()
+            _, done = self.game.evaluate(node)
+            if self.display_playing:
+                visualize_hex_node_state(node)
+            while True:
+                if model_1_start:
+                    next_node = self.get_actor_move(node, model_1)
+                else:
+                    next_node = self.get_actor_move(node, model_2)
+                _, done = self.game.evaluate(next_node)
+                if done:
+                    print(f"Model 1 won game {g}.\n")
+                    model_1_wins += 1
+                    if self.display_playing:
+                        visualize_hex_node_state(next_node)
+                        print()
+                        time.sleep(1)
+                    break
+                node = next_node
+                if model_1_start:
+                    next_node = self.get_actor_move(node, model_2)
+                else:
+                    next_node = self.get_actor_move(node, model_1)
+                _, done = self.game.evaluate(next_node)
+                if done:
+                    print("Model 2 won game {g}.\n")
+                    model_2_wins += 1
+                    if self.display_playing:
+                        visualize_hex_node_state(next_node)
+                        print()
+                        time.sleep(5)
+                    break
+                node = next_node
+        return model_1_wins, model_2_wins
