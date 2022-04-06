@@ -92,8 +92,8 @@ def start() -> None:
     agent = setup_actor()
     print(f"Starting training.\n")
     agent.train()
-    print("Playing against the network.")
-    agent.play_against_network()
+    # print("Playing against the network.")
+    # agent.play_against_network()
     print("Starting TOPP.")
     agent.play_topp()
 

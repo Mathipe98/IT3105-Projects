@@ -76,9 +76,11 @@ class MCTSAgent:
         try:
             if self.topp:
                 dir = "topp_models"
+                suffix = "_0"
             else:
                 dir = "models"
-            filepath = f"./{dir}/{self.model_name}"#_{self.episodes // self.model_saves}"
+                suffix = f"_{self.episodes // (self.episodes // self.model_saves)}"
+            filepath = f"./{dir}/{self.model_name}"# + suffix
             self.model.load_weights(filepath)
             print(f"Read model from file!")
             done_training = True
@@ -188,7 +190,7 @@ class MCTSAgent:
         next_node = self.game.perform_action(
             root_node=from_node, action=action)
         if self.display_training:
-            print(f"State after action {action_tuple}:\n")
+            # print(f"State after action {action_tuple}:\n")
             visualize_hex_node_state(next_node)
         return next_node
     
@@ -210,7 +212,7 @@ class MCTSAgent:
         next_node = self.game.perform_action(
             root_node=from_node, action=action)
         if self.display_playing:
-            print(f"State after neural network action:\n")
+            # print(f"State after neural network action:\n")
             visualize_hex_node_state(next_node)
         return next_node
 
@@ -324,7 +326,7 @@ class MCTSAgent:
                 # Add score to scoreboard
                 scoreboard[f"{self.model_name}_{m1}"] += m1_score
                 scoreboard[f"{self.model_name}_{m2}"] += m2_score
-        scoreboard = {k: v for k, v in sorted(scoreboard.items(), key=lambda item: item[1])}
+        scoreboard = {k: v for k, v in sorted(scoreboard.items(), key=lambda item: -item[1])}
         print(f"\n==========\nFinal scoreboard:\n==========\n")
         for model_name, score in scoreboard.items():
             print(f"{model_name}: {score}")
@@ -345,10 +347,12 @@ class MCTSAgent:
                     next_node = self.get_actor_move(node, model_1)
                 else:
                     next_node = self.get_actor_move(node, model_2)
-                _, done = self.game.evaluate(next_node)
+                reward, done = self.game.evaluate(next_node)
                 if done:
                     print(f"Model 1 won game {g}.\n")
-                    model_1_wins += 1
+                    # Only increment winning counter if we did not get a draw
+                    if reward != 0:
+                        model_1_wins += 1
                     if self.display_playing:
                         visualize_hex_node_state(next_node)
                         print()
@@ -360,8 +364,9 @@ class MCTSAgent:
                     next_node = self.get_actor_move(node, model_1)
                 _, done = self.game.evaluate(next_node)
                 if done:
-                    print("Model 2 won game {g}.\n")
-                    model_2_wins += 1
+                    print(f"Model 2 won game {g}.\n")
+                    if reward != 0:
+                        model_2_wins += 1
                     if self.display_playing:
                         visualize_hex_node_state(next_node)
                         print()

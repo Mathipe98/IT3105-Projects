@@ -5,18 +5,18 @@ CompressionLevel = 9
 ForwardX11 = yes
 
 [ACTOR]
-n_episodes = 5
+n_episodes = 50
 tree_traversals = 1000
 display_training = False
-display_playing = True
-force_relearn = False
-model_name = HEX_7x7_FINAL
+display_playing = False
+force_relearn = True
+model_name = HEX_5x5_TOPP
 model_saves = 5
-topp = False
-topp_games = 25
+topp = True
+topp_games = 10
 
 [GAME]
-board_size = 7
+board_size = 5
 
 [NETWORK]
 hidden_layers = (512,256,)

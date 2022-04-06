@@ -15,7 +15,7 @@ def get_actor() -> MCTSAgent:
         game=game,
         tree_traversals=10,
         n_episodes=100,
-        model_name="HEX_7x7_LATEST",
+        model_name="HEX_7x7_FINAL",
     )
     model_params = {
         "hidden_layers": (512, 256,),
@@ -62,7 +62,7 @@ class MyClient(ActorClient):
 
     def handle_get_action(self, state):
         # Create a numpy array from state and replace 2 values with -1
-        row, col = actor.get_tournament_action(state, self.flip_gamestate)
+        row, col = actor.get_tournament_action(state, False)
         return row, col
     
     def handle_game_over(self, winner, end_state):
@@ -91,4 +91,4 @@ class MyClient(ActorClient):
 if __name__ == '__main__':
     actor = get_actor()
     client = MyClient(auth="8274151fb5ea436bae5e804d223743c9")
-    client.run(mode="league")
+    client.run()

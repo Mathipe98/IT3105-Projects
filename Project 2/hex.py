@@ -66,6 +66,9 @@ class Hex:
         elif self.is_losing(node):
             reward = -1
             final = True
+        elif self.is_draw(node):
+            reward = 0
+            final = True
         if not node.max_player:
             reward *= -1
         return reward, final
@@ -84,6 +87,10 @@ class Hex:
             return self.connected_left_right(node, target)
         target = 1
         return self.connected_top_bottom(node, target)
+    
+    def is_draw(self, node: Node) -> bool:
+        return not self.is_winning(node) and not self.is_losing(node) and \
+            len(self.get_legal_actions(node)) == 0
     
     def connected_top_bottom(self, node: Node, target: int) -> bool:
         visited = []
